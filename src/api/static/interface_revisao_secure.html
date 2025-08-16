@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Revisão Seguro - Classificação Fiscal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        /* Login Form */
+        .login-container {
+            max-width: 400px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        
+        .form-group input {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .btn-login {
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn-login:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-login:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* User Bar */
+        .user-bar {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 0;
+        }
+        
+        .user-info-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-avatar {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .user-details h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .user-details p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .btn-logout {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .product-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: 0;
+        }
+        
+        .section-content {
+            padding: 1.5rem;
+        }
+        
+        .product-info {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .info-group {
+            margin-bottom: 1rem;
+        }
+        
+        .info-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+        
+        .info-group .value {
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .classification-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .classification-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .classification-card h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .classification-card .code {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 0.5rem;
+        }
+        
+        .confidence {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .barcode-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .barcode-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .barcode-status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-valid {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-invalid {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-not-applicable {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .barcode-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .review-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .review-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .review-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .navigation-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .user-bar {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .product-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .classification-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .review-actions {
+                flex-direction: column;
+            }
+            
+            .review-form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Container -->
+    <div id="login-container" class="login-container">
+        <h2 style="text-align: center; margin-bottom: 2rem; color: #333;">
+            🔐 Login Seguro
+        </h2>
+        <form id="login-form" class="login-form">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" id="btn-login" class="btn-login">
+                Entrar
+            </button>
+        </form>
+        <div id="login-error" class="alert alert-error hidden">
+            <strong>Erro de Login</strong><br>
+            <span id="login-error-message"></span>
+        </div>
+        <div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 5px; font-size: 0.9rem;">
+            <strong>Usuários de Teste:</strong><br>
+            • ana.silva@empresa.com / senha123<br>
+            • admin@empresa.com / admin123
+        </div>
+    </div>
+
+    <!-- Main Application (Hidden until login) -->
+    <div id="main-app" class="hidden">
+        <!-- Barra de Usuário -->
+        <div class="user-bar">
+            <div class="user-info-section">
+                <div class="user-avatar">
+                    👤
+                </div>
+                <div class="user-details">
+                    <h4 id="user-name">Usuário</h4>
+                    <p id="user-email">email@empresa.com</p>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="logout()">
+                🚪 Sair
+            </button>
+        </div>
+
+        <div class="container">
+            <div class="header">
+                <h1>🎯 Sistema de Revisão Seguro - Classificação Fiscal</h1>
+                <p>Interface segura para revisão humana de classificações NCM/CEST com autenticação JWT</p>
+            </div>
+            
+            <!-- Dashboard de Estatísticas -->
+            <div class="dashboard">
+                <div class="card">
+                    <h3>📊 Total Processados</h3>
+                    <div class="value" id="total-processados">0</div>
+                </div>
+                <div class="card">
+                    <h3>✅ Aprovados</h3>
+                    <div class="value" id="total-aprovados">0</div>
+                </div>
+                <div class="card">
+                    <h3>✏️ Corrigidos</h3>
+                    <div class="value" id="total-corrigidos">0</div>
+                </div>
+                <div class="card">
+                    <h3>🏆 Golden Set</h3>
+                    <div class="value" id="total-golden">0</div>
+                </div>
+            </div>
+
+            <!-- Conteúdo do Produto -->
+            <div id="product-content">
+                <div class="alert alert-info">
+                    <strong>🔄 Carregando...</strong><br>
+                    <p>Carregando produto para revisão...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado da aplicação
+        let produtoAtual = null;
+        let estatisticas = {};
+        let usuarioLogado = null;
+        let authToken = null;
+        
+        // URLs da API
+        const API_BASE = 'http://localhost:8000/api/v1';
+        
+        // Inicializar aplicação
+        async function inicializar() {
+            try {
+                // Verificar se já está logado
+                authToken = localStorage.getItem('authToken');
+                if (authToken) {
+                    const user = await verificarToken();
+                    if (user) {
+                        usuarioLogado = user;
+                        mostrarAplicacao();
+                        await carregarEstatisticas();
+                        await carregarProximoProduto();
+                        return;
+                    }
+                }
+                
+                // Mostrar tela de login
+                mostrarLogin();
+                
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+                mostrarLogin();
+            }
+        }
+        
+        // Verificar token JWT
+        async function verificarToken() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    return await response.json();
+                } else {
+                    localStorage.removeItem('authToken');
+                    authToken = null;
+                    return null;
+                }
+            } catch (error) {
+                console.error('Erro ao verificar token:', error);
+                localStorage.removeItem('authToken');
+                authToken = null;
+                return null;
+            }
+        }
+        
+        // Mostrar tela de login
+        function mostrarLogin() {
+            document.getElementById('login-container').classList.remove('hidden');
+            document.getElementById('main-app').classList.add('hidden');
+        }
+        
+        // Mostrar aplicação principal
+        function mostrarAplicacao() {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            
+            // Atualizar informações do usuário
+            if (usuarioLogado) {
+                document.getElementById('user-name').textContent = usuarioLogado.name;
+                document.getElementById('user-email').textContent = usuarioLogado.email;
+            }
+        }
+        
+        // Processar login
+        async function processarLogin(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btnLogin = document.getElementById('btn-login');
+            const errorDiv = document.getElementById('login-error');
+            
+            // Desabilitar botão
+            btnLogin.disabled = true;
+            btnLogin.textContent = 'Entrando...';
+            
+            // Esconder erro anterior
+            errorDiv.classList.add('hidden');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    
+                    // Salvar token e dados do usuário
+                    authToken = userData.token;
+                    usuarioLogado = userData;
+                    localStorage.setItem('authToken', authToken);
+                    
+                    // Mostrar aplicação
+                    mostrarAplicacao();
+                    
+                    // Carregar dados
+                    await carregarEstatisticas();
+                    await carregarProximoProduto();
+                    
+                    mostrarAlerta('Login realizado com sucesso!', 'success');
+                    
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('login-error-message').textContent = 
+                        errorData.detail || 'Credenciais inválidas';
+                    errorDiv.classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error('Erro no login:', error);
+                document.getElementById('login-error-message').textContent = 
+                    'Erro de conexão. Verifique se a API está rodando.';
+                errorDiv.classList.remove('hidden');
+            } finally {
+                // Reabilitar botão
+                btnLogin.disabled = false;
+                btnLogin.textContent = 'Entrar';
+            }
+        }
+        
+        // Logout
+        function logout() {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                localStorage.removeItem('authToken');
+                authToken = null;
+                usuarioLogado = null;
+                mostrarLogin();
+                mostrarAlerta('Logout realizado com sucesso', 'info');
+            }
+        }
+        
+        // Fazer requisição autenticada
+        async function fetchAuth(url, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
+            
+            if (response.status === 401) {
+                // Token expirado
+                localStorage.removeItem('authToken');
+                authToken = null;
+                usuarioLogado = null;
+                mostrarLogin();
+                mostrarAlerta('Sessão expirada. Faça login novamente.', 'warning');
+                throw new Error('Token expirado');
+            }
+            
+            return response;
+        }
+        
+        // Carregar estatísticas
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetchAuth(`${API_BASE}/dashboard/stats`);
+                if (response.ok) {
+                    estatisticas = await response.json();
+                    atualizarDashboard();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+        
+        // Atualizar dashboard
+        function atualizarDashboard() {
+            document.getElementById('total-processados').textContent = estatisticas.total_classificacoes || 0;
+            document.getElementById('total-aprovados').textContent = estatisticas.aprovadas || 0;
+            document.getElementById('total-corrigidos').textContent = estatisticas.corrigidas || 0;
+            document.getElementById('total-golden').textContent = estatisticas.total_golden || 0;
+        }
+        
+        // Carregar próximo produto
+        async function carregarProximoProduto() {
+            if (!usuarioLogado) {
+                return;
+            }
+            
+            try {
+                const produtoAtualId = produtoAtual ? produtoAtual.produto_id : null;
+                const url = produtoAtualId 
+                    ? `${API_BASE}/classificacoes/proximo-pendente?produto_id_atual=${produtoAtualId}`
+                    : `${API_BASE}/classificacoes/proximo-pendente`;
+                    
+                const response = await fetchAuth(url);
+                if (response.ok) {
+                    const dados = await response.json();
+                    produtoAtual = dados;
+                    renderizarProduto();
+                } else if (response.status === 404) {
+                    document.getElementById('product-content').innerHTML = `
+                        <div class="alert alert-info">
+                            <strong>✅ Parabéns!</strong><br>
+                            Não há produtos pendentes para revisão.
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar produto:', error);
+                if (error.message !== 'Token expirado') {
+                    mostrarAlerta('Erro ao carregar produto: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        // Renderizar produto atual
+        function renderizarProduto() {
+            if (!produtoAtual) return;
+            
+            const confiancaTotal = (produtoAtual.confianca_sugerida * 100).toFixed(1);
+            
+            document.getElementById('product-content').innerHTML = `
+                <!-- Navegação -->
+                <div class="navigation-section">
+                    <button class="btn btn-secondary" onclick="carregarProdutoAnterior()">
+                        ⬅️ Produto Anterior
+                    </button>
+                    <span>Produto ID: ${produtoAtual.produto_id}</span>
+                    <button class="btn btn-secondary" onclick="carregarProximoProduto()">
+                        Próximo Produto ➡��
+                    </button>
+                </div>
+                
+                <!-- Informações do Produto -->
+                <div class="product-section">
+                    <h2 class="section-header">📦 Informações do Produto</h2>
+                    <div class="section-content">
+                        <div class="product-info">
+                            <div>
+                                <div class="info-group">
+                                    <label>Produto ID:</label>
+                                    <div class="value">${produtoAtual.produto_id}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Descrição do Produto:</label>
+                                    <div class="value">${produtoAtual.descricao_produto}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Código do Produto:</label>
+                                    <div class="value">${produtoAtual.codigo_produto || 'N/A'}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Código de Barras:</label>
+                                    <div class="value">${produtoAtual.codigo_barra || 'N/A'}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="info-group">
+                                    <label>NCM Original:</label>
+                                    <div class="value">${produtoAtual.ncm_original || 'N/A'}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>CEST Original:</label>
+                                    <div class="value">${produtoAtual.cest_original || 'N/A'}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Status:</label>
+                                    <div class="value">${produtoAtual.status_revisao}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Classificações Sugeridas -->
+                <div class="product-section">
+                    <h2 class="section-header">🤖 Classificações Sugeridas pelo Sistema</h2>
+                    <div class="section-content">
+                        <div class="classification-section">
+                            <div class="classification-card">
+                                <h4>📋 Classificação NCM</h4>
+                                <div class="code">${produtoAtual.ncm_sugerido || 'Não classificado'}</div>
+                                <div class="confidence">Confiança: ${confiancaTotal}%</div>
+                            </div>
+                            <div class="classification-card">
+                                <h4>🏷️ Classificação CEST</h4>
+                                <div class="code">${produtoAtual.cest_sugerido || 'Não aplicável'}</div>
+                                <div class="confidence">Confiança: ${confiancaTotal}%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <label>Justificativa do Sistema:</label>
+                            <div class="value">${produtoAtual.justificativa_sistema || 'Nenhuma justificativa fornecida'}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gestão de Código de Barras -->
+                <div class="barcode-section">
+                    <div class="barcode-header">
+                        <h3>🏷️ Gestão de Código de Barras</h3>
+                        <span class="barcode-status status-pending">Pendente Verificação</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Código Atual:</label>
+                        <div class="value">${produtoAtual.codigo_barra || 'Nenhum código disponível'}</div>
+                    </div>
+                    <div class="barcode-actions">
+                        <button class="btn btn-success" onclick="confirmarCodigoCorreto()">
+                            ✅ Código Correto
+                        </button>
+                        <button class="btn btn-warning" onclick="corrigirCodigo()">
+                            ✏️ Corrigir Código
+                        </button>
+                        <button class="btn btn-danger" onclick="marcarComoNaoAplicavel()">
+                            🗑️ Não Aplicável
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Formulário de Revisão -->
+                <div class="review-section">
+                    <h2 class="section-header">✏️ Revisão Humana</h2>
+                    <div class="section-content">
+                        <form id="review-form">
+                            <div class="review-form">
+                                <div class="form-group">
+                                    <label for="ncm-corrigido">NCM Corrigido:</label>
+                                    <input type="text" id="ncm-corrigido" name="ncm_corrigido" placeholder="Ex: 8517.62.55">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cest-corrigido">CEST Corrigido:</label>
+                                    <input type="text" id="cest-corrigido" name="cest_corrigido" placeholder="Ex: 21.106.00">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="justificativa">Justificativa (obrigatória para correções):</label>
+                                    <textarea id="justificativa" name="justificativa" placeholder="Explique as correções realizadas..."></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="descricao-completa">Descrição Completa (opcional):</label>
+                                    <textarea id="descricao-completa" name="descricao_completa" placeholder="Descrição mais detalhada do produto..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="review-actions">
+                                <button type="button" class="btn btn-success" onclick="aprovarClassificacao()">
+                                    ✅ Aprovar
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="corrigirClassificacao()">
+                                    ✏️ Corrigir
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="adicionarAoGoldenSet()">
+                                    🏆 Adicionar ao Golden Set
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="pularProduto()">
+                                    ⏭️ Pular/Próximo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Confirmar código correto
+        function confirmarCodigoCorreto() {
+            const observacao = prompt('Confirmação de que o código está correto (opcional):');
+            produtoAtual.codigo_barras_status = 'correto';
+            produtoAtual.codigo_barras_observacao = observacao || 'Código verificado e confirmado como correto';
+            
+            // Atualizar status visual
+            const statusEl = document.querySelector('.barcode-status');
+            statusEl.textContent = 'Correto';
+            statusEl.className = 'barcode-status status-valid';
+            
+            mostrarAlerta('Código de barras confirmado como correto', 'success');
+        }
+        
+        // Corrigir código
+        function corrigirCodigo() {
+            const novoCodigo = prompt('Digite o código de barras correto:');
+            if (!novoCodigo) return;
+            
+            const observacao = prompt('Observações sobre a correção (opcional):');
+            
+            produtoAtual.codigo_barra = novoCodigo;
+            produtoAtual.codigo_barras_status = 'corrigido';
+            produtoAtual.codigo_barras_observacao = observacao || 'Código corrigido manualmente';
+            
+            // Atualizar display
+            document.querySelector('.barcode-section .value').textContent = novoCodigo;
+            const statusEl = document.querySelector('.barcode-status');
+            statusEl.textContent = 'Corrigido';
+            statusEl.className = 'barcode-status status-valid';
+            
+            mostrarAlerta('Código de barras corrigido com sucesso', 'success');
+        }
+        
+        // Marcar como não aplicável
+        function marcarComoNaoAplicavel() {
+            const motivo = prompt('Por que este código de barras não é aplicável? (opcional):');
+            
+            produtoAtual.codigo_barras_status = 'nao_aplicavel';
+            produtoAtual.codigo_barras_observacao = motivo || 'Código de barras não aplicável';
+            
+            // Atualizar status visual
+            const statusEl = document.querySelector('.barcode-status');
+            statusEl.textContent = 'Não Aplicável';
+            statusEl.className = 'barcode-status status-not-applicable';
+            
+            mostrarAlerta('Código marcado como não aplicável', 'info');
+        }
+        
+        // Aprovar classificação
+        async function aprovarClassificacao() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Usuário não autenticado', 'error');
+                return;
+            }
+            
+            try {
+                const dados = {
+                    acao: 'APROVAR',
+                    revisado_por: usuarioLogado.email,
+                    codigo_barra_acao: produtoAtual.codigo_barras_status || 'MANTER',
+                    codigo_barra_observacoes: produtoAtual.codigo_barras_observacao || ''
+                };
+                
+                const response = await fetchAuth(`${API_BASE}/classificacoes/${produtoAtual.produto_id}/revisar`, {
+                    method: 'PUT',
+                    body: JSON.stringify(dados)
+                });
+                
+                if (response.ok) {
+                    mostrarAlerta('Classificação aprovada com sucesso!', 'success');
+                    await carregarEstatisticas();
+                    await carregarProximoProduto();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao aprovar classificação');
+                }
+            } catch (error) {
+                console.error('Erro ao aprovar:', error);
+                if (error.message !== 'Token expirado') {
+                    mostrarAlerta('Erro ao aprovar classificação: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        // Corrigir classificação
+        async function corrigirClassificacao() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Usuário não autenticado', 'error');
+                return;
+            }
+            
+            const form = document.getElementById('review-form');
+            const formData = new FormData(form);
+            
+            const ncmCorrigido = formData.get('ncm_corrigido');
+            const cestCorrigido = formData.get('cest_corrigido');
+            const justificativa = formData.get('justificativa');
+            
+            if ((ncmCorrigido || cestCorrigido) && !justificativa) {
+                mostrarAlerta('Justificativa é obrigatória para correções', 'error');
+                return;
+            }
+            
+            try {
+                const dados = {
+                    acao: 'CORRIGIR',
+                    revisado_por: usuarioLogado.email,
+                    ncm_corrigido: ncmCorrigido || produtoAtual.ncm_sugerido,
+                    cest_corrigido: cestCorrigido || produtoAtual.cest_sugerido,
+                    justificativa_correcao: justificativa,
+                    descricao_completa: formData.get('descricao_completa'),
+                    codigo_barra_acao: produtoAtual.codigo_barras_status || 'MANTER',
+                    codigo_barra_observacoes: produtoAtual.codigo_barras_observacao || ''
+                };
+                
+                const response = await fetchAuth(`${API_BASE}/classificacoes/${produtoAtual.produto_id}/revisar`, {
+                    method: 'PUT',
+                    body: JSON.stringify(dados)
+                });
+                
+                if (response.ok) {
+                    mostrarAlerta('Correções aplicadas com sucesso!', 'success');
+                    await carregarEstatisticas();
+                    await carregarProximoProduto();
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao aplicar correções');
+                }
+            } catch (error) {
+                console.error('Erro ao corrigir:', error);
+                if (error.message !== 'Token expirado') {
+                    mostrarAlerta('Erro ao aplicar correções: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        // Adicionar ao Golden Set
+        async function adicionarAoGoldenSet() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Usuário não autenticado', 'error');
+                return;
+            }
+            
+            const justificativa = prompt('Justificativa para adicionar ao Golden Set:');
+            if (!justificativa) return;
+            
+            try {
+                const response = await fetchAuth(`${API_BASE}/golden-set/adicionar`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        produto_id: produtoAtual.produto_id,
+                        justificativa: justificativa
+                    })
+                });
+                
+                if (response.ok) {
+                    mostrarAlerta('Produto adicionado ao Golden Set!', 'success');
+                    await aprovarClassificacao(); // Aprovar também
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao adicionar ao Golden Set');
+                }
+            } catch (error) {
+                console.error('Erro ao adicionar ao Golden Set:', error);
+                if (error.message !== 'Token expirado') {
+                    mostrarAlerta('Erro ao adicionar ao Golden Set: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        // Pular produto
+        async function pularProduto() {
+            await carregarProximoProduto();
+            mostrarAlerta('Produto pulado - carregando próximo', 'info');
+        }
+        
+        // Carregar produto anterior
+        async function carregarProdutoAnterior() {
+            mostrarAlerta('Função de produto anterior em desenvolvimento', 'info');
+        }
+        
+        // Mostrar alerta
+        function mostrarAlerta(mensagem, tipo) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo}`;
+            alertDiv.innerHTML = `<strong>${mensagem}</strong>`;
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '1000';
+            alertDiv.style.minWidth = '300px';
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Login form
+            document.getElementById('login-form').addEventListener('submit', processarLogin);
+            
+            // Inicializar aplicação
+            inicializar();
+        });
+    </script>
+</body>
+</html>

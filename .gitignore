@@ -1,0 +1,294 @@
+# Ignorar pasta do ambiente virtual Python
+venv/
+env/
+.venv/
+.env/
+documentacao/
+*.md
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Packages #
+############
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs and Editors #
+####################
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-workspace
+.sublime-project
+
+# Machine Learning & AI specific #
+###################################
+# Modelos treinados
+*.model
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.hdf5
+*.onnx
+*.pb
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Datasets grandes
+data/raw/large_datasets/
+data/processed/large_files/
+*.csv.gz
+*.parquet
+*.feather
+data/raw/
+data\knowledge_base
+data
+*.pdf
+# FAISS índices
+*.faiss
+*.index
+data/knowledge_base/faiss_index.faiss
+data/knowledge_base/*.faiss
+
+# Vector embeddings
+embeddings/
+vectors/
+*.npy
+*.npz
+
+# Ollama/LLM cache
+.ollama/
+ollama_cache/
+llm_cache/
+
+# Checkpoints de treinamento
+checkpoints/
+runs/
+logs/
+wandb/
+mlruns/
+.mlflow/
+
+# TensorBoard
+events.out.tfevents.*
+
+# Hugging Face cache
+.cache/huggingface/
+transformers_cache/
+
+# Specific to this project #
+############################
+# Dados processados grandes
+data/processed/classificacao_*.csv
+data/processed/classificacao_*.json
+data/processed/*.xlsx
+data/knowledge_base/metadata.db
+data/knowledge_base/ncm_mapping.json
+
+# Backups de banco
+*.sql.gz
+*.dump
+backup_*.sql
+
+# Arquivos temporários do sistema
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Arquivos de configuração sensíveis
+config/local.py
+config/production.py
+.env.local
+.env.production
+secrets.json
+credentials.json
+
+# Resultados de testes
+test_results/
+test_outputs/
+coverage_reports/
+
+# Cache do sistema
+.cache/
+cache/
+__pycache__/
+.pytest_cache/
+
+# Logs específicos do projeto
+logs/
+*.log.*
+error.log
+debug.log
+app.log
+
+# Uploads de usuários
+uploads/
+user_data/
+temp_files/
+
+# Documentação gerada
+docs/_build/
+docs/build/
+site/
+
+# Performance profiling
+*.prof
+*.profile
+.profile/
+
+# Memory dumps
+*.dmp
+core.*
+
+# SSL certificates
+*.key
+*.crt
+*.pem
+*.p12
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# API keys e tokens (segurança extra)
+*api_key*
+*token*
+*secret*
+*password*

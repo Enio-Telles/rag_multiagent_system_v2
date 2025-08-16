@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Revisão - Classificação Fiscal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        /* Barra de Usuário */
+        .user-bar {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 0;
+        }
+        
+        .user-info-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-avatar {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .user-details h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .user-details p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .user-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-selector {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 5px;
+            background: white;
+            color: #333;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .user-selector option {
+            padding: 0.5rem;
+        }
+        
+        .btn-user {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn-user:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .btn-danger-user {
+            background: #e74c3c !important;
+        }
+        
+        .btn-danger-user:hover {
+            background: #c0392b !important;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .product-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            margin: 0;
+        }
+        
+        .section-content {
+            padding: 1.5rem;
+        }
+        
+        .product-info {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .info-group {
+            margin-bottom: 1rem;
+        }
+        
+        .info-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+        
+        .info-group .value {
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .classification-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .classification-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .classification-card h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .classification-card .code {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 0.5rem;
+        }
+        
+        .confidence {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .barcode-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .barcode-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .barcode-status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-valid {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-invalid {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-not-applicable {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .barcode-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .review-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .review-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .review-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .navigation-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        /* Estilos para Explicações dos Agentes */
+        .explanations-container {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .explanation-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-btn:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .explanation-content {
+            position: relative;
+            min-height: 300px;
+        }
+        
+        .explanation-panel {
+            display: none;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .explanation-panel.active {
+            display: block;
+        }
+        
+        .explanation-panel h4 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .explanation-text {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            font-family: inherit;
+        }
+        
+        .explanation-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: #f1f3f4;
+            border-radius: 4px;
+        }
+        
+        .explanation-details small {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        
+        .explanation-details strong {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .explanation-actions {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Botão para mostrar explicações */
+        .show-explanations-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .show-explanations-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Estilos para Consultas dos Agentes */
+        .consultation-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        
+        .consultation-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .consultation-tab-btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .consultation-tab-btn:hover {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        .consultation-tab-btn.active {
+            background: white;
+            color: #28a745;
+            border-bottom-color: #28a745;
+        }
+        
+        .consultation-content {
+            position: relative;
+            min-height: 350px;
+        }
+        
+        .consultation-panel {
+            display: none;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .consultation-panel.active {
+            display: block;
+        }
+        
+        .consultation-panel h4 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .consultation-item {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .consultation-item:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.1);
+        }
+        
+        .consultation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .consultation-type {
+            background: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .consultation-time {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        
+        .consultation-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        
+        .consultation-metric {
+            background: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .consultation-metric-label {
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        
+        .consultation-metric-value {
+            font-size: 0.9rem;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .database-info {
+            background: #f1f3f4;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        
+        .database-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #17a2b8;
+            margin-bottom: 0.75rem;
+        }
+        
+        .database-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .database-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .consultation-actions {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .show-consultations-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 1rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .show-consultations-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        
+        .empty-consultations {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .empty-consultations i {
+            font-size: 3rem;
+            color: #ddd;
+            margin-bottom: 1rem;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .user-bar {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .user-actions {
+                flex-direction: column;
+            }
+            
+            .product-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .classification-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .review-actions {
+                flex-direction: column;
+            }
+            
+            .review-form {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Barra de Usuário -->
+    <div class="user-bar">
+        <div class="user-info-section">
+            <div class="user-avatar">
+                👤
+            </div>
+            <div class="user-details">
+                <h4 id="user-name">Usuário não selecionado</h4>
+                <p id="user-email">Selecione um usuário para continuar</p>
+            </div>
+        </div>
+        <div class="user-actions">
+            <select id="user-selector" class="user-selector" onchange="selecionarUsuarioDiretamente()">
+                <option value="">🔄 Trocar Usuário</option>
+                <option value="Ana Silva (ana.silva@empresa.com)">👩‍💼 Ana Silva</option>
+                <option value="novo_usuario">➕ Novo Usuário</option>
+            </select>
+            <button class="btn-user" onclick="cadastrarNovoUsuario()">
+                ➕ Novo Usuário
+            </button>
+            <button class="btn-user btn-danger-user" onclick="excluirUsuario()">
+                🗑️ Excluir Usuário
+            </button>
+            <button class="btn-user" onclick="logout()">
+                🚪 Sair
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Sistema de Revisão - Classificação Fiscal</h1>
+            <p>Interface para revisão humana de classificações NCM/CEST com gestão de Código de Barras e Golden Set</p>
+        </div>
+        
+        <!-- Dashboard de Estatísticas -->
+        <div class="dashboard">
+            <div class="card">
+                <h3>📊 Total Processados</h3>
+                <div class="value" id="total-processados">0</div>
+            </div>
+            <div class="card">
+                <h3>✅ Aprovados</h3>
+                <div class="value" id="total-aprovados">0</div>
+            </div>
+            <div class="card">
+                <h3">✏️ Corrigidos</h3>
+                <div class="value" id="total-corrigidos">0</div>
+            </div>
+            <div class="card">
+                <h3>🏆 Golden Set</h3>
+                <div class="value" id="total-golden">0</div>
+                <div style="margin-top: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="abrirGerenciamentoGoldenSet()" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">
+                        ⚙️ Gerenciar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo do Produto -->
+        <div id="product-content">
+            <div class="alert alert-info">
+                <strong>🔄 Carregando...</strong><br>
+                <p>Carregando produto para revisão...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado da aplicação
+        let produtoAtual = null;
+        let estatisticas = {};
+        let usuarioLogado = null;
+        
+        // Lista de usuários do sistema (exemplo)
+        const USUARIOS_SISTEMA = [
+            'Ana Silva (ana.silva@empresa.com)'
+        ];
+        
+        // URLs da API (ajustar conforme necessário)
+        const API_BASE = 'http://localhost:8000/api/v1';
+        
+        // Inicializar aplicação
+        async function inicializar() {
+            try {
+                await carregarUsuariosSalvos();
+                await verificarUsuarioLogado();
+                await carregarEstatisticas();
+                await carregarProximoProduto();
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+                mostrarAlerta('Erro ao inicializar aplicação', 'error');
+            }
+        }
+        
+        // Carregar usuários salvos do localStorage
+        function carregarUsuariosSalvos() {
+            try {
+                const usuariosSalvos = localStorage.getItem('usuariosSistema');
+                if (usuariosSalvos) {
+                    const usuariosArray = JSON.parse(usuariosSalvos);
+                    
+                    // Mesclar com usuários padrão sem duplicatas
+                    const usuariosUnicos = [...new Set([...USUARIOS_SISTEMA, ...usuariosArray])];
+                    USUARIOS_SISTEMA.length = 0; // Limpar array
+                    USUARIOS_SISTEMA.push(...usuariosUnicos);
+                    
+                    // Atualizar dropdown
+                    atualizarDropdownUsuarios();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar usuários salvos:', error);
+            }
+        }
+        
+        // Atualizar dropdown de usuários
+        function atualizarDropdownUsuarios() {
+            const selector = document.getElementById('user-selector');
+            
+            // Manter primeira opção
+            const primeiraOpcao = selector.options[0];
+            
+            // Limpar outras opções
+            selector.innerHTML = '';
+            selector.appendChild(primeiraOpcao);
+            
+            // Adicionar usuários atualizados
+            USUARIOS_SISTEMA.forEach((usuario, index) => {
+                const option = document.createElement('option');
+                option.value = usuario;
+                
+                // Ícones baseados no índice ou nome
+                const icones = ['👨‍💼', '👩‍💼', '👨‍💻', '👩‍💻', '👨‍🔬', '👩‍🔬', '👨‍⚖️', '👩‍⚖️', '👨‍🏫', '👩‍🏫'];
+                const icone = icones[index % icones.length] || '👤';
+                
+                const nome = usuario.match(/^(.+?) \(/)?.[1] || usuario;
+                option.textContent = `${icone} ${nome}`;
+                
+                selector.appendChild(option);
+            });
+            
+            // Adicionar opção "Novo Usuário" no final
+            const novoUsuarioOption = document.createElement('option');
+            novoUsuarioOption.value = 'novo_usuario';
+            novoUsuarioOption.textContent = '➕ Novo Usuário';
+            selector.appendChild(novoUsuarioOption);
+        }
+        
+        // Verificar ou solicitar login do usuário
+        async function verificarUsuarioLogado() {
+            // Verificar se já está logado
+            usuarioLogado = localStorage.getItem('usuarioLogado');
+            
+            if (!usuarioLogado) {
+                // Solicitar seleção de usuário via modal se necessário
+                const usuarioSelecionado = await selecionarUsuario();
+                if (usuarioSelecionado) {
+                    usuarioLogado = usuarioSelecionado;
+                    localStorage.setItem('usuarioLogado', usuarioLogado);
+                    mostrarAlerta(`Logado como: ${usuarioLogado}`, 'success');
+                } else {
+                    mostrarAlerta('É necessário selecionar um usuário para continuar', 'error');
+                    return;
+                }
+            }
+            
+            // Atualizar barra de usuário
+            atualizarBarraUsuario();
+        }
+        
+        // Seleção de usuário via modal
+        async function selecionarUsuario() {
+            return new Promise((resolve) => {
+                // Criar modal customizado
+                const modalHTML = `
+                    <div id="modal-usuario" style="
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                        background: rgba(0,0,0,0.5); z-index: 10000; display: flex; 
+                        align-items: center; justify-content: center;
+                    ">
+                        <div style="
+                            background: white; padding: 2rem; border-radius: 10px; 
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 500px; width: 90%;
+                        ">
+                            <h3 style="margin-bottom: 1rem; color: #333;">Selecione seu usuário:</h3>
+                            <select id="usuario-modal-select" style="
+                                width: 100%; padding: 0.5rem; margin-bottom: 1rem; 
+                                border: 1px solid #ddd; border-radius: 5px;
+                            ">
+                                <option value="">-- Escolha um usuário --</option>
+                                ${USUARIOS_SISTEMA.map(user => `<option value="${user}">${user}</option>`).join('')}
+                            </select>
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                                <button id="modal-cancelar" style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Cancelar</button>
+                                <button id="modal-confirmar" style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Confirmar</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Adicionar eventos
+                document.getElementById('modal-cancelar').onclick = () => {
+                    document.getElementById('modal-usuario').remove();
+                    resolve(null);
+                };
+                
+                document.getElementById('modal-confirmar').onclick = () => {
+                    const select = document.getElementById('usuario-modal-select');
+                    const usuarioSelecionado = select.value;
+                    if (usuarioSelecionado) {
+                        document.getElementById('modal-usuario').remove();
+                        resolve(usuarioSelecionado);
+                    } else {
+                        alert('Por favor, selecione um usuário.');
+                    }
+                };
+            });
+        }
+        
+        // Seleção direta de usuário via dropdown
+        async function selecionarUsuarioDiretamente() {
+            const selector = document.getElementById('user-selector');
+            const usuarioSelecionado = selector.value;
+            
+            if (usuarioSelecionado === 'novo_usuario') {
+                // Resetar seletor primeiro
+                selector.value = '';
+                // Chamar função de cadastro
+                await cadastrarNovoUsuario();
+            } else if (usuarioSelecionado) {
+                usuarioLogado = usuarioSelecionado;
+                localStorage.setItem('usuarioLogado', usuarioLogado);
+                atualizarBarraUsuario();
+                mostrarAlerta(`Usuário alterado para: ${usuarioLogado}`, 'success');
+                
+                // Resetar seletor
+                selector.value = '';
+            }
+        }
+        
+        // Cadastrar novo usuário
+        async function cadastrarNovoUsuario() {
+            const nome = prompt('Digite o nome completo do usuário:');
+            if (!nome) return;
+            
+            const email = prompt('Digite o email do usuário:');
+            if (!email) return;
+            
+            // Validar email básico
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Email inválido. Use o formato: usuario@empresa.com');
+                return;
+            }
+            
+            const novoUsuario = `${nome} (${email})`;
+            
+            // Verificar se usuário já existe
+            if (USUARIOS_SISTEMA.includes(novoUsuario)) {
+                alert('Este usuário já existe na lista!');
+                return;
+            }
+            
+            // Adicionar à lista local
+            USUARIOS_SISTEMA.push(novoUsuario);
+            
+            // Atualizar dropdown
+            atualizarDropdownUsuarios();
+            
+            // Salvar lista atualizada no localStorage
+            localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_SISTEMA));
+            
+            // Confirmar se quer usar o novo usuário
+            if (confirm(`Usuário "${nome}" cadastrado! Deseja fazer login com este usuário?`)) {
+                usuarioLogado = novoUsuario;
+                localStorage.setItem('usuarioLogado', usuarioLogado);
+                atualizarBarraUsuario();
+                mostrarAlerta(`Logado como: ${usuarioLogado}`, 'success');
+            }
+        }
+        
+        // Excluir usuário
+        async function excluirUsuario() {
+            // Verificar se há usuário logado
+            if (!usuarioLogado) {
+                alert('Nenhum usuário está logado para ser excluído.');
+                return;
+            }
+            
+            // Lista de usuários protegidos (não podem ser excluídos)
+            const usuariosProtegidos = [
+                'Ana Silva (ana.silva@empresa.com)'
+            ];
+            
+            // Verificar se é usuário protegido
+            if (usuariosProtegidos.includes(usuarioLogado)) {
+                alert('Este usuário não pode ser excluído (usuário do sistema).');
+                return;
+            }
+            
+            // Extrair nome para confirmação
+            const match = usuarioLogado.match(/^(.+?) \((.+?)\)$/);
+            const nomeUsuario = match ? match[1] : usuarioLogado;
+            
+            // Confirmação dupla
+            if (!confirm(`⚠️ ATENÇÃO: Deseja realmente excluir o usuário "${nomeUsuario}"?\n\nEsta ação não pode ser desfeita.`)) {
+                return;
+            }
+            
+            if (!confirm(`Confirme novamente: Excluir "${nomeUsuario}" permanentemente?`)) {
+                return;
+            }
+            
+            try {
+                // Remover da lista
+                const index = USUARIOS_SISTEMA.indexOf(usuarioLogado);
+                if (index > -1) {
+                    USUARIOS_SISTEMA.splice(index, 1);
+                }
+                
+                // Atualizar dropdown
+                atualizarDropdownUsuarios();
+                
+                // Salvar lista atualizada
+                localStorage.setItem('usuariosSistema', JSON.stringify(USUARIOS_SISTEMA));
+                
+                // Fazer logout automático
+                localStorage.removeItem('usuarioLogado');
+                usuarioLogado = null;
+                atualizarBarraUsuario();
+                
+                // Mostrar confirmação
+                mostrarAlerta(`Usuário "${nomeUsuario}" excluído com sucesso`, 'success');
+                
+                // Desabilitar interface
+                document.getElementById('product-content').innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Usuário excluído</strong><br>
+                        O usuário foi removido. Selecione outro usuário para continuar.
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Erro ao excluir usuário:', error);
+                mostrarAlerta('Erro ao excluir usuário', 'error');
+            }
+        }
+        
+        // Logout
+        function logout() {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                localStorage.removeItem('usuarioLogado');
+                usuarioLogado = null;
+                atualizarBarraUsuario();
+                mostrarAlerta('Logout realizado com sucesso', 'info');
+                
+                // Desabilitar interface até novo login
+                document.getElementById('product-content').innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Usuário deslogado</strong><br>
+                        Selecione um usuário na barra superior para continuar.
+                    </div>
+                `;
+            }
+        }
+        
+        // Atualizar barra de usuário
+        function atualizarBarraUsuario() {
+            const userNameEl = document.getElementById('user-name');
+            const userEmailEl = document.getElementById('user-email');
+            
+            if (usuarioLogado) {
+                // Extrair nome e email
+                const match = usuarioLogado.match(/^(.+?) \((.+?)\)$/);
+                if (match) {
+                    const [, nome, email] = match;
+                    userNameEl.textContent = nome;
+                    userEmailEl.textContent = email;
+                } else {
+                    userNameEl.textContent = usuarioLogado;
+                    userEmailEl.textContent = 'Usuário ativo';
+                }
+                
+                // Adicionar indicador visual
+                userNameEl.style.color = '#2ecc71';
+                userEmailEl.style.color = 'rgba(255,255,255,0.9)';
+            } else {
+                userNameEl.textContent = 'Usuário não selecionado';
+                userEmailEl.textContent = 'Selecione um usuário para continuar';
+                userNameEl.style.color = '#e74c3c';
+                userEmailEl.style.color = 'rgba(255,255,255,0.7)';
+            }
+        }
+        
+        // Carregar estatísticas
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/stats`);
+                if (response.ok) {
+                    estatisticas = await response.json();
+                    atualizarDashboard();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+        
+        // Atualizar dashboard
+        function atualizarDashboard() {
+            document.getElementById('total-processados').textContent = estatisticas.total_classificacoes || 0;
+            document.getElementById('total-aprovados').textContent = estatisticas.aprovadas || 0;
+            document.getElementById('total-corrigidos').textContent = estatisticas.corrigidas || 0;
+            document.getElementById('total-golden').textContent = estatisticas.total_golden || 0;
+        }
+        
+        // Carregar próximo produto
+        async function carregarProximoProduto() {
+            if (!usuarioLogado) {
+                return;
+            }
+            
+            try {
+                // Usar endpoint específico para próximo produto pendente
+                const produtoAtualId = produtoAtual ? produtoAtual.produto_id : null;
+                const url = produtoAtualId 
+                    ? `${API_BASE}/classificacoes/proximo-pendente?produto_id_atual=${produtoAtualId}`
+                    : `${API_BASE}/classificacoes/proximo-pendente`;
+                    
+                const response = await fetch(url);
+                if (response.ok) {
+                    const dados = await response.json();
+                    produtoAtual = dados;
+                    renderizarProduto();
+                } else if (response.status === 404) {
+                    document.getElementById('product-content').innerHTML = `
+                        <div class="alert alert-info">
+                            <strong>✅ Parabéns!</strong><br>
+                            Não há produtos pendentes para revisão.
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar produto:', error);
+                mostrarAlerta('Erro ao carregar produto: ' + error.message, 'error');
+            }
+        }
+        
+        // Renderizar produto atual
+        function renderizarProduto() {
+            if (!produtoAtual) return;
+            
+            const confiancaTotal = (produtoAtual.confianca_sugerida * 100).toFixed(1);
+            
+            document.getElementById('product-content').innerHTML = `
+                <!-- Navegação -->
+                <div class="navigation-section">
+                    <button class="btn btn-secondary" onclick="carregarProdutoAnterior()">
+                        ⬅️ Produto Anterior
+                    </button>
+                    <span>Produto ID: ${produtoAtual.produto_id}</span>
+                    <button class="btn btn-secondary" onclick="carregarProximoProduto()">
+                        Próximo Produto ➡️
+                    </button>
+                </div>
+                
+                <!-- Informações do Produto -->
+                <div class="product-section">
+                    <h2 class="section-header">📦 Informações do Produto</h2>
+                    <div class="section-content">
+                        <div class="product-info">
+                            <div>
+                                <div class="info-group">
+                                    <label>Produto ID:</label>
+                                    <div class="value">${produtoAtual.produto_id}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Descrição do Produto:</label>
+                                    <div class="value">${produtoAtual.descricao_produto}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Código do Produto:</label>
+                                    <div class="value">${produtoAtual.codigo_produto || 'N/A'}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Código de Barras:</label>
+                                    <div class="value">${produtoAtual.codigo_barra || 'N/A'}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="info-group">
+                                    <label>NCM Original:</label>
+                                    <div class="value">${produtoAtual.ncm_original || 'N/A'}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>CEST Original:</label>
+                                    <div class="value">${produtoAtual.cest_original || 'N/A'}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Data de Classificação:</label>
+                                    <div class="value">${new Date(produtoAtual.data_classificacao).toLocaleString('pt-BR')}</div>
+                                </div>
+                                <div class="info-group">
+                                    <label>Status:</label>
+                                    <div class="value">${produtoAtual.status_revisao}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Classificações Sugeridas -->
+                <div class="product-section">
+                    <h2 class="section-header">🤖 Classificações Sugeridas pelo Sistema</h2>
+                    <div class="section-content">
+                        <div class="classification-section">
+                            <div class="classification-card">
+                                <h4>📋 Classificação NCM</h4>
+                                <div class="code">${produtoAtual.ncm_sugerido || 'Não classificado'}</div>
+                                <div class="confidence">Confiança: ${confiancaTotal}%</div>
+                            </div>
+                            <div class="classification-card">
+                                <h4>🏷️ Classificação CEST</h4>
+                                <div class="code">${produtoAtual.cest_sugerido || 'Não aplicável'}</div>
+                                <div class="confidence">Confiança: ${confiancaTotal}%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="info-group">
+                            <label>Justificativa do Sistema:</label>
+                            <div class="value">${produtoAtual.justificativa_sistema || 'Nenhuma justificativa fornecida'}</div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <button class="show-explanations-btn" onclick="mostrarExplicacoes()">
+                                🔍 Ver Explicações Detalhadas dos Agentes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Explicações dos Agentes -->
+                <div class="product-section" id="explicacoes-section" style="display: none;">
+                    <h2 class="section-header">🤖 Explicações dos Agentes IA</h2>
+                    <div class="section-content">
+                        <div class="explanations-container">
+                            <div class="explanation-tabs">
+                                <button class="tab-btn active" onclick="mostrarExplicacao('expansao')">🔍 Expansão</button>
+                                <button class="tab-btn" onclick="mostrarExplicacao('agregacao')">🎲 Agregação</button>
+                                <button class="tab-btn" onclick="mostrarExplicacao('ncm')">📋 NCM</button>
+                                <button class="tab-btn" onclick="mostrarExplicacao('cest')">🏷️ CEST</button>
+                                <button class="tab-btn" onclick="mostrarExplicacao('reconciliacao')">🔄 Reconciliação</button>
+                            </div>
+                            
+                            <div class="explanation-content">
+                                <div id="explicacao-expansao" class="explanation-panel active">
+                                    <h4>🔍 Agente de Expansão</h4>
+                                    <div class="explanation-text" id="texto-expansao">
+                                        Carregando explicação do agente de expansão...
+                                    </div>
+                                    <div class="explanation-details">
+                                        <small><strong>Palavras-chave:</strong> <span id="palavras-expansao">-</span></small>
+                                        <small><strong>Confiança:</strong> <span id="confianca-expansao">-</span></small>
+                                        <small><strong>Tempo processamento:</strong> <span id="tempo-expansao">-</span></small>
+                                    </div>
+                                </div>
+                                
+                                <div id="explicacao-agregacao" class="explanation-panel">
+                                    <h4>🎲 Agente de Agregação</h4>
+                                    <div class="explanation-text" id="texto-agregacao">
+                                        Carregando explicação do agente de agregação...
+                                    </div>
+                                    <div class="explanation-details">
+                                        <small><strong>Palavras-chave:</strong> <span id="palavras-agregacao">-</span></small>
+                                        <small><strong>Confiança:</strong> <span id="confianca-agregacao">-</span></small>
+                                        <small><strong>Tempo processamento:</strong> <span id="tempo-agregacao">-</span></small>
+                                    </div>
+                                </div>
+                                
+                                <div id="explicacao-ncm" class="explanation-panel">
+                                    <h4>📋 Agente NCM</h4>
+                                    <div class="explanation-text" id="texto-ncm">
+                                        Carregando explicação do agente NCM...
+                                    </div>
+                                    <div class="explanation-details">
+                                        <small><strong>Palavras-chave:</strong> <span id="palavras-ncm">-</span></small>
+                                        <small><strong>Confiança:</strong> <span id="confianca-ncm">-</span></small>
+                                        <small><strong>Tempo processamento:</strong> <span id="tempo-ncm">-</span></small>
+                                    </div>
+                                </div>
+                                
+                                <div id="explicacao-cest" class="explanation-panel">
+                                    <h4>🏷️ Agente CEST</h4>
+                                    <div class="explanation-text" id="texto-cest">
+                                        Carregando explicação do agente CEST...
+                                    </div>
+                                    <div class="explanation-details">
+                                        <small><strong>Palavras-chave:</strong> <span id="palavras-cest">-</span></small>
+                                        <small><strong>Confiança:</strong> <span id="confianca-cest">-</span></small>
+                                        <small><strong>Tempo processamento:</strong> <span id="tempo-cest">-</span></small>
+                                    </div>
+                                </div>
+                                
+                                <div id="explicacao-reconciliacao" class="explanation-panel">
+                                    <h4>🔄 Agente de Reconciliação</h4>
+                                    <div class="explanation-text" id="texto-reconciliacao">
+                                        Carregando explicação do agente de reconciliação...
+                                    </div>
+                                    <div class="explanation-details">
+                                        <small><strong>Palavras-chave:</strong> <span id="palavras-reconciliacao">-</span></small>
+                                        <small><strong>Confiança:</strong> <span id="confianca-reconciliacao">-</span></small>
+                                        <small><strong>Tempo processamento:</strong> <span id="tempo-reconciliacao">-</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="explanation-actions">
+                                <button class="btn btn-info" onclick="classificarComExplicacao()">
+                                    🚀 Reclassificar com Explicações
+                                </button>
+                                <button class="btn btn-secondary" onclick="ocultarExplicacoes()">
+                                    ❌ Ocultar Explicações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Consultas aos Bancos de Dados -->
+                <div class="product-section" id="consultas-section" style="display: none;">
+                    <h2 class="section-header">🗄️ Consultas aos Bancos de Dados</h2>
+                    <div class="section-content">
+                        <div class="consultas-container">
+                            <!-- Botões para alternar entre agentes -->
+                            <div class="consulta-tabs">
+                                <button class="tab-btn active" onclick="mostrarConsultasAgente('expansion')">🔍 Expansão</button>
+                                <button class="tab-btn" onclick="mostrarConsultasAgente('aggregation')">🎲 Agregação</button>
+                                <button class="tab-btn" onclick="mostrarConsultasAgente('ncm')">📋 NCM</button>
+                                <button class="tab-btn" onclick="mostrarConsultasAgente('cest')">🏷️ CEST</button>
+                                <button class="tab-btn" onclick="mostrarConsultasAgente('reconciler')">🔄 Reconciliação</button>
+                                <button class="tab-btn" onclick="mostrarMetadadosBancos()">📊 Info Bancos</button>
+                            </div>
+                            
+                            <!-- Conteúdo das consultas por agente -->
+                            <div class="consulta-content">
+                                <div id="consultas-expansion" class="consulta-panel active">
+                                    <h4>🔍 Consultas do Agente de Expansão</h4>
+                                    <div id="consultas-expansion-content">
+                                        <div class="loading-consultas">Carregando consultas...</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="consultas-aggregation" class="consulta-panel">
+                                    <h4>🎲 Consultas do Agente de Agregação</h4>
+                                    <div id="consultas-aggregation-content">
+                                        <div class="loading-consultas">Carregando consultas...</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="consultas-ncm" class="consulta-panel">
+                                    <h4>📋 Consultas do Agente NCM</h4>
+                                    <div id="consultas-ncm-content">
+                                        <div class="loading-consultas">Carregando consultas...</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="consultas-cest" class="consulta-panel">
+                                    <h4>🏷️ Consultas do Agente CEST</h4>
+                                    <div id="consultas-cest-content">
+                                        <div class="loading-consultas">Carregando consultas...</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="consultas-reconciler" class="consulta-panel">
+                                    <h4>🔄 Consultas do Agente de Reconciliação</h4>
+                                    <div id="consultas-reconciler-content">
+                                        <div class="loading-consultas">Carregando consultas...</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="metadados-bancos" class="consulta-panel">
+                                    <h4>📊 Informações dos Bancos de Dados</h4>
+                                    <div id="metadados-bancos-content">
+                                        <div class="loading-consultas">Carregando informações dos bancos...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="consulta-actions">
+                                <button class="btn btn-info" onclick="recarregarConsultas()">
+                                    🔄 Recarregar Consultas
+                                </button>
+                                <button class="btn btn-secondary" onclick="ocultarConsultas()">
+                                    ❌ Ocultar Consultas
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gestão de Código de Barras -->
+                <div class="barcode-section">
+                    <div class="barcode-header">
+                        <h3>🏷️ Gestão de Código de Barras</h3>
+                        <span class="barcode-status status-pending">Pendente Verificação</span>
+                    </div>
+                    <div class="info-group">
+                        <label>Código Atual:</label>
+                        <div class="value">${produtoAtual.codigo_barra || 'Nenhum código disponível'}</div>
+                    </div>
+                    <div class="barcode-actions">
+                        <button class="btn btn-success" onclick="confirmarCodigoCorreto()">
+                            ✅ Código Correto
+                        </button>
+                        <button class="btn btn-warning" onclick="corrigirCodigo()">
+                            ✏️ Corrigir Código
+                        </button>
+                        <button class="btn btn-danger" onclick="marcarComoNaoAplicavel()">
+                            🗑️ Não Aplicável
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Formulário de Revisão -->
+                <div class="review-section">
+                    <h2 class="section-header">✏️ Revisão Humana</h2>
+                    <div class="section-content">
+                        <form id="review-form">
+                            <div class="review-form">
+                                <div class="form-group">
+                                    <label for="ncm-corrigido">NCM Corrigido:</label>
+                                    <input type="text" id="ncm-corrigido" name="ncm_corrigido" placeholder="Ex: 8517.62.55">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cest-corrigido">CEST Corrigido:</label>
+                                    <input type="text" id="cest-corrigido" name="cest_corrigido" placeholder="Ex: 21.106.00">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="justificativa">Justificativa (obrigatória para correções):</label>
+                                    <textarea id="justificativa" name="justificativa" placeholder="Explique as correções realizadas..."></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="descricao-completa">Descrição Completa (opcional):</label>
+                                    <textarea id="descricao-completa" name="descricao_completa" placeholder="Descrição mais detalhada do produto..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="review-actions">
+                                <button type="button" class="btn btn-success" onclick="aprovarClassificacao()">
+                                    ✅ Aprovar
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="corrigirClassificacao()">
+                                    ✏️ Corrigir
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="adicionarAoGoldenSet()">
+                                    🏆 Adicionar ao Golden Set
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="pularProduto()">
+                                    ⏭️ Pular/Próximo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Confirmar código correto
+        function confirmarCodigoCorreto() {
+            const observacao = prompt('Confirmação de que o código está correto (opcional):');
+            produtoAtual.codigo_barras_status = 'correto';
+            produtoAtual.codigo_barras_observacao = observacao || 'Código verificado e confirmado como correto';
+            
+            // Atualizar status visual
+            const statusEl = document.querySelector('.barcode-status');
+            statusEl.textContent = 'Correto';
+            statusEl.className = 'barcode-status status-valid';
+            
+            mostrarAlerta('Código de barras confirmado como correto', 'success');
+        }
+        
+        // Corrigir código
+        function corrigirCodigo() {
+            const novoCodigo = prompt('Digite o código de barras correto:');
+            if (!novoCodigo) return;
+            
+            const observacao = prompt('Observações sobre a correção (opcional):');
+            
+            produtoAtual.codigo_barra = novoCodigo;
+            produtoAtual.codigo_barras_status = 'corrigido';
+            produtoAtual.codigo_barras_observacao = observacao || 'Código corrigido manualmente';
+            
+            // Atualizar display
+            document.querySelector('.barcode-section .value').textContent = novoCodigo;
+            const statusEl = document.querySelector('.barcode-status');
+            statusEl.textContent = 'Corrigido';
+            statusEl.className = 'barcode-status status-valid';
+            
+            mostrarAlerta('Código de barras corrigido com sucesso', 'success');
+        }
+        
+        // Marcar como não aplicável
+        function marcarComoNaoAplicavel() {
+            const motivo = prompt('Por que este código de barras não é aplicável? (opcional):');
+            
+            produtoAtual.codigo_barras_status = 'nao_aplicavel';
+            produtoAtual.codigo_barras_observacao = motivo || 'Código de barras não aplicável';
+            
+            // Atualizar status visual
+            const statusEl = document.querySelector('.barcode-status');
+            statusEl.textContent = 'Não Aplicável';
+            statusEl.className = 'barcode-status status-not-applicable';
+            
+            mostrarAlerta('Código marcado como não aplicável', 'info');
+        }
+        
+        // Aprovar classificação
+        async function aprovarClassificacao() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Selecione um usuário antes de continuar', 'error');
+                return;
+            }
+            
+            try {
+                const dados = {
+                    acao: "APROVAR",
+                    revisado_por: usuarioLogado,
+                    codigo_barra_acao: "MANTER",
+                    codigo_barra_observacoes: produtoAtual.codigo_barras_observacao || 'Classificação aprovada sem alterações'
+                };
+                
+                const response = await fetch(`${API_BASE}/classificacoes/${produtoAtual.produto_id}/revisar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    mostrarAlerta('Classificação aprovada com sucesso!', 'success');
+                    await carregarEstatisticas();
+                    await carregarProximoProduto();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'Erro ao aprovar classificação');
+                }
+            } catch (error) {
+                console.error('Erro ao aprovar:', error);
+                mostrarAlerta(`Erro ao aprovar classificação: ${error.message}`, 'error');
+            }
+        }
+        
+        // Corrigir classificação
+        async function corrigirClassificacao() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Selecione um usuário antes de continuar', 'error');
+                return;
+            }
+            
+            const form = document.getElementById('review-form');
+            const formData = new FormData(form);
+            
+            const ncmCorrigido = formData.get('ncm_corrigido');
+            const cestCorrigido = formData.get('cest_corrigido');
+            const justificativa = formData.get('justificativa');
+            
+            if ((ncmCorrigido || cestCorrigido) && !justificativa) {
+                mostrarAlerta('Justificativa é obrigatória para correções', 'error');
+                return;
+            }
+            
+            try {
+                const dados = {
+                    acao: "CORRIGIR",
+                    revisado_por: usuarioLogado,
+                    ncm_corrigido: ncmCorrigido || produtoAtual.ncm_sugerido,
+                    cest_corrigido: cestCorrigido || produtoAtual.cest_sugerido,
+                    justificativa_correcao: justificativa,
+                    descricao_completa: formData.get('descricao_completa'),
+                    codigo_barra_acao: "MANTER",
+                    codigo_barra_observacoes: produtoAtual.codigo_barras_observacao || ''
+                };
+                
+                const response = await fetch(`${API_BASE}/classificacoes/${produtoAtual.produto_id}/revisar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    mostrarAlerta('Correções aplicadas com sucesso!', 'success');
+                    await carregarEstatisticas();
+                    await carregarProximoProduto();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'Erro ao aplicar correções');
+                }
+            } catch (error) {
+                console.error('Erro ao corrigir:', error);
+                mostrarAlerta(`Erro ao aplicar correções: ${error.message}`, 'error');
+            }
+        }
+        
+        // Adicionar ao Golden Set
+        async function adicionarAoGoldenSet() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Selecione um usuário antes de continuar', 'error');
+                return;
+            }
+            
+            if (!produtoAtual || !produtoAtual.produto_id) {
+                mostrarAlerta('Nenhum produto selecionado', 'error');
+                return;
+            }
+            
+            try {
+                // Criar dados para envio
+                const dados = {
+                    produto_id: produtoAtual.produto_id,
+                    justificativa: 'Produto de alta qualidade adicionado via interface de revisão',
+                    revisado_por: usuarioLogado
+                };
+                
+                const response = await fetch(`${API_BASE}/golden-set/adicionar`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    if (resultado.success) {
+                        mostrarAlerta('Produto adicionado ao Golden Set com sucesso!', 'success');
+                        await carregarEstatisticas(); // Atualizar estatísticas
+                        await carregarProximoProduto(); // Carregar próximo produto
+                    } else {
+                        mostrarAlerta(resultado.message || 'Erro ao adicionar ao Golden Set', 'warning');
+                    }
+                } else {
+                    let errorMessage = 'Erro ao adicionar ao Golden Set';
+                    try {
+                        const errorData = await response.json();
+                        if (typeof errorData === 'object') {
+                            errorMessage = errorData.detail || errorData.message || JSON.stringify(errorData);
+                        } else {
+                            errorMessage = String(errorData);
+                        }
+                    } catch (parseError) {
+                        errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+            } catch (error) {
+                console.error('Erro ao adicionar ao Golden Set:', error);
+                let displayMessage = error.message;
+                if (displayMessage.includes('[object Object]')) {
+                    displayMessage = 'Erro de comunicação com o servidor. Tente novamente.';
+                }
+                mostrarAlerta(`Erro ao adicionar ao Golden Set: ${displayMessage}`, 'error');
+            }
+        }
+        
+        // Pular produto
+        async function pularProduto() {
+            await carregarProximoProduto();
+            mostrarAlerta('Produto pulado - carregando próximo', 'info');
+        }
+        
+        // Carregar produto anterior
+        async function carregarProdutoAnterior() {
+            mostrarAlerta('Função de produto anterior em desenvolvimento', 'info');
+        }
+        
+        // Mostrar alerta
+        function mostrarAlerta(mensagem, tipo) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo}`;
+            alertDiv.innerHTML = `<strong>${mensagem}</strong>`;
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '1000';
+            alertDiv.style.minWidth = '300px';
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+        
+        // Abrir gerenciamento do Golden Set
+        async function abrirGerenciamentoGoldenSet() {
+            if (!usuarioLogado) {
+                mostrarAlerta('Selecione um usuário antes de continuar', 'error');
+                return;
+            }
+            
+            try {
+                // Carregar dados do Golden Set
+                const response = await fetch(`${API_BASE}/golden-set/listar?limit=100`);
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar Golden Set');
+                }
+                
+                const dados = await response.json();
+                const entradas = dados.entradas || [];
+                
+                // Criar modal de gerenciamento
+                const modalHTML = `
+                    <div id="modal-golden-set" style="
+                        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                        background: rgba(0,0,0,0.5); z-index: 10000; display: flex; 
+                        align-items: center; justify-content: center; overflow-y: auto;
+                    ">
+                        <div style="
+                            background: white; padding: 2rem; border-radius: 10px; 
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.3); max-width: 900px; width: 90%;
+                            max-height: 80vh; overflow-y: auto;
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h3 style="margin: 0; color: #333;">🏆 Gerenciamento do Golden Set</h3>
+                                <button onclick="fecharModalGoldenSet()" style="
+                                    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;
+                                ">×</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 5px;">
+                                <strong>Total de entradas: ${entradas.length}</strong>
+                                <div style="margin-top: 0.5rem;">
+                                    <button class="btn btn-danger" onclick="limparGoldenSet()" style="margin-right: 0.5rem;">
+                                        🗑️ Limpar Tudo
+                                    </button>
+                                    <button class="btn btn-warning" onclick="restaurarGoldenSet()" style="margin-right: 0.5rem;">
+                                        🔄 Restaurar
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="baixarBackupGoldenSet()">
+                                        💾 Backup
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead style="background: #f8f9fa; position: sticky; top: 0;">
+                                        <tr>
+                                            <th style="padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left;">ID</th>
+                                            <th style="padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left;">Produto</th>
+                                            <th style="padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left;">NCM</th>
+                                            <th style="padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left;">CEST</th>
+                                            <th style="padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left;">Revisor</th>
+                                            <th style="padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left;">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${entradas.map(entrada => `
+                                            <tr>
+                                                <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${entrada.id}</td>
+                                                <td style="padding: 0.5rem; border-bottom: 1px solid #eee; max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${entrada.descricao_produto}">
+                                                    ${entrada.descricao_produto.substring(0, 50)}${entrada.descricao_produto.length > 50 ? '...' : ''}
+                                                </td>
+                                                <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${entrada.ncm_final || 'N/A'}</td>
+                                                <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${entrada.cest_final || 'N/A'}</td>
+                                                <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">${entrada.revisado_por || 'N/A'}</td>
+                                                <td style="padding: 0.5rem; border-bottom: 1px solid #eee;">
+                                                    <button class="btn btn-danger" onclick="removerEntradaGoldenSet(${entrada.id})" style="font-size: 0.8rem; padding: 0.2rem 0.5rem;">
+                                                        🗑️
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                        ${entradas.length === 0 ? '<tr><td colspan="6" style="padding: 1rem; text-align: center; color: #666;">Nenhuma entrada encontrada</td></tr>' : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style="margin-top: 1rem; text-align: right;">
+                                <button class="btn btn-secondary" onclick="fecharModalGoldenSet()">
+                                    Fechar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+            } catch (error) {
+                console.error('Erro ao abrir gerenciamento Golden Set:', error);
+                mostrarAlerta('Erro ao carregar dados do Golden Set', 'error');
+            }
+        }
+        
+        // Fechar modal do Golden Set
+        function fecharModalGoldenSet() {
+            const modal = document.getElementById('modal-golden-set');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Limpar Golden Set
+        async function limparGoldenSet() {
+            if (!confirm('⚠️ ATENÇÃO: Esta ação irá limpar TODAS as entradas do Golden Set!\n\nEsta ação pode ser revertida usando "Restaurar", mas você tem certeza?')) {
+                return;
+            }
+            
+            if (!confirm('Confirme novamente: Limpar TODO o Golden Set?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/golden-set/limpar?confirmar=true`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    mostrarAlerta(resultado.message || 'Golden Set limpo com sucesso', 'success');
+                    
+                    // Fechar modal e recarregar estatísticas
+                    fecharModalGoldenSet();
+                    await carregarEstatisticas();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'Erro ao limpar Golden Set');
+                }
+            } catch (error) {
+                console.error('Erro ao limpar Golden Set:', error);
+                mostrarAlerta(`Erro ao limpar Golden Set: ${error.message}`, 'error');
+            }
+        }
+        
+        // Restaurar Golden Set
+        async function restaurarGoldenSet() {
+            if (!confirm('Deseja restaurar todas as entradas inativas do Golden Set?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/golden-set/restaurar`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    mostrarAlerta(resultado.message || 'Golden Set restaurado com sucesso', 'success');
+                    
+                    // Fechar modal e recarregar estatísticas
+                    fecharModalGoldenSet();
+                    await carregarEstatisticas();
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'Erro ao restaurar Golden Set');
+                }
+            } catch (error) {
+                console.error('Erro ao restaurar Golden Set:', error);
+                mostrarAlerta(`Erro ao restaurar Golden Set: ${error.message}`, 'error');
+            }
+        }
+        
+        // Remover entrada específica do Golden Set
+        async function removerEntradaGoldenSet(entradaId) {
+            if (!confirm(`Deseja remover a entrada ${entradaId} do Golden Set?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/golden-set/${entradaId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    const resultado = await response.json();
+                    mostrarAlerta(resultado.message || 'Entrada removida com sucesso', 'success');
+                    
+                    // Reabrir modal para atualizar lista
+                    fecharModalGoldenSet();
+                    await carregarEstatisticas();
+                    setTimeout(() => abrirGerenciamentoGoldenSet(), 500);
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'Erro ao remover entrada');
+                }
+            } catch (error) {
+                console.error('Erro ao remover entrada Golden Set:', error);
+                mostrarAlerta(`Erro ao remover entrada: ${error.message}`, 'error');
+            }
+        }
+        
+        // Baixar backup do Golden Set
+        async function baixarBackupGoldenSet() {
+            try {
+                // Criar backup via service (não implementado na API ainda, mas podemos simular)
+                const response = await fetch(`${API_BASE}/golden-set/listar?limit=1000`);
+                if (!response.ok) {
+                    throw new Error('Erro ao obter dados para backup');
+                }
+                
+                const dados = await response.json();
+                const backup = {
+                    data_backup: new Date().toISOString(),
+                    total_entradas: dados.total || 0,
+                    entradas: dados.entradas || []
+                };
+                
+                // Criar arquivo para download
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `golden_set_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                mostrarAlerta('Backup do Golden Set baixado com sucesso', 'success');
+                
+            } catch (error) {
+                console.error('Erro ao criar backup:', error);
+                mostrarAlerta(`Erro ao criar backup: ${error.message}`, 'error');
+            }
+        }
+        
+        // =================================================================
+        // FUNÇÕES PARA EXPLICAÇÕES DOS AGENTES
+        // =================================================================
+        
+        // Mostrar seção de explicações
+        function mostrarExplicacoes() {
+            const explicacoesSection = document.getElementById('explicacoes-section');
+            explicacoesSection.style.display = 'block';
+            explicacoesSection.scrollIntoView({ behavior: 'smooth' });
+            
+            // Carregar explicações se existir produto atual
+            if (produtoAtual && produtoAtual.produto_id) {
+                carregarExplicacoesProduto(produtoAtual.produto_id);
+            }
+        }
+        
+        // Ocultar seção de explicações
+        function ocultarExplicacoes() {
+            const explicacoesSection = document.getElementById('explicacoes-section');
+            explicacoesSection.style.display = 'none';
+        }
+        
+        // Alternar entre abas de explicação
+        function mostrarExplicacao(agente) {
+            // Remover active de todas as abas e painéis
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.explanation-panel').forEach(panel => panel.classList.remove('active'));
+            
+            // Ativar aba e painel selecionados
+            document.querySelector(`[onclick="mostrarExplicacao('${agente}')"]`).classList.add('active');
+            document.getElementById(`explicacao-${agente}`).classList.add('active');
+        }
+        
+        // Carregar explicações do produto
+        async function carregarExplicacoesProduto(produtoId) {
+            try {
+                mostrarAlerta('Carregando explicações dos agentes...', 'info');
+                
+                const response = await fetch(`${API_BASE}/explicacoes/${produtoId}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        mostrarAlerta('Nenhuma explicação encontrada. Clique em "Reclassificar" para gerar explicações.', 'warning');
+                        return;
+                    }
+                    throw new Error('Erro ao carregar explicações');
+                }
+                
+                const data = await response.json();
+                const explicacoes = data.explicacoes || [];
+                
+                // Mapear explicações por agente
+                const explicacoesPorAgente = {};
+                explicacoes.forEach(exp => {
+                    explicacoesPorAgente[exp.agente_nome] = exp;
+                });
+                
+                // Atualizar interface com as explicações
+                atualizarInterfaceExplicacoes(explicacoesPorAgente);
+                
+                mostrarAlerta('Explicações carregadas com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('Erro ao carregar explicações:', error);
+                mostrarAlerta(`Erro ao carregar explicações: ${error.message}`, 'error');
+                
+                // Mostrar mensagem padrão se não houver explicações
+                mostrarExplicacoesPadrao();
+            }
+        }
+        
+        // Atualizar interface com explicações
+        function atualizarInterfaceExplicacoes(explicacoes) {
+            const agentes = ['expansao', 'agregacao', 'ncm', 'cest', 'reconciliacao'];
+            
+            agentes.forEach(agente => {
+                const exp = explicacoes[agente] || explicacoes[agente === 'agregacao' ? 'aggregation' : agente];
+                
+                // Mapear nomes dos agentes
+                let nomeAgente = agente;
+                if (agente === 'expansao') nomeAgente = 'expansion';
+                if (agente === 'agregacao') nomeAgente = 'aggregation';
+                if (agente === 'reconciliacao') nomeAgente = 'reconciler';
+                
+                const explicacao = explicacoes[nomeAgente];
+                
+                if (explicacao) {
+                    // Atualizar texto da explicação
+                    const textoEl = document.getElementById(`texto-${agente}`);
+                    textoEl.textContent = explicacao.explicacao_detalhada || 'Explicação não disponível';
+                    
+                    // Atualizar detalhes
+                    const palavrasEl = document.getElementById(`palavras-${agente}`);
+                    palavrasEl.textContent = explicacao.palavras_chave || '-';
+                    
+                    const confiancaEl = document.getElementById(`confianca-${agente}`);
+                    confiancaEl.textContent = explicacao.nivel_confianca ? 
+                        `${(explicacao.nivel_confianca * 100).toFixed(1)}%` : '-';
+                    
+                    const tempoEl = document.getElementById(`tempo-${agente}`);
+                    tempoEl.textContent = explicacao.tempo_processamento_ms ? 
+                        `${explicacao.tempo_processamento_ms}ms` : '-';
+                } else {
+                    // Mostrar mensagem de não disponível
+                    const textoEl = document.getElementById(`texto-${agente}`);
+                    textoEl.textContent = 'Explicação não disponível para este agente. Execute uma reclassificação para gerar explicações.';
+                    
+                    document.getElementById(`palavras-${agente}`).textContent = '-';
+                    document.getElementById(`confianca-${agente}`).textContent = '-';
+                    document.getElementById(`tempo-${agente}`).textContent = '-';
+                }
+            });
+        }
+        
+        // Mostrar explicações padrão quando não há dados
+        function mostrarExplicacoesPadrao() {
+            const agentes = ['expansao', 'agregacao', 'ncm', 'cest', 'reconciliacao'];
+            
+            agentes.forEach(agente => {
+                const textoEl = document.getElementById(`texto-${agente}`);
+                textoEl.textContent = 'Nenhuma explicação disponível. Use o botão "Reclassificar com Explicações" para gerar explicações detalhadas.';
+                
+                document.getElementById(`palavras-${agente}`).textContent = '-';
+                document.getElementById(`confianca-${agente}`).textContent = '-';
+                document.getElementById(`tempo-${agente}`).textContent = '-';
+            });
+        }
+        
+        // Classificar produto com explicações
+        async function classificarComExplicacao() {
+            if (!produtoAtual) {
+                mostrarAlerta('Nenhum produto selecionado', 'error');
+                return;
+            }
+            
+            try {
+                mostrarAlerta('Classificando produto com explicações detalhadas... Isso pode levar alguns segundos.', 'info');
+                
+                const request = {
+                    produto_id: produtoAtual.produto_id,
+                    descricao_produto: produtoAtual.descricao_produto,
+                    codigo_produto: produtoAtual.codigo_produto,
+                    salvar_explicacoes: true
+                };
+                
+                const response = await fetch(`${API_BASE}/classificar-com-explicacao`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || 'Erro na classificação');
+                }
+                
+                const resultado = await response.json();
+                
+                // Atualizar produto atual com novos dados
+                produtoAtual.ncm_sugerido = resultado.ncm_classificado;
+                produtoAtual.cest_sugerido = resultado.cest_classificado;
+                produtoAtual.confianca_sugerida = resultado.confianca_consolidada;
+                produtoAtual.justificativa_sistema = resultado.justificativa_final;
+                
+                // Atualizar interface principal
+                atualizarInterfaceProduto();
+                
+                // Atualizar explicações se disponíveis
+                if (resultado.explicacoes_agentes) {
+                    atualizarInterfaceExplicacoes(resultado.explicacoes_agentes);
+                } else {
+                    // Recarregar explicações do banco
+                    setTimeout(() => carregarExplicacoesProduto(produtoAtual.produto_id), 1000);
+                }
+                
+                mostrarAlerta('Produto reclassificado com explicações detalhadas!', 'success');
+                
+            } catch (error) {
+                console.error('Erro ao classificar com explicações:', error);
+                mostrarAlerta(`Erro na classificação: ${error.message}`, 'error');
+            }
+        }
+        
+        // ===== FUNÇÕES PARA CONSULTAS DOS AGENTES =====
+        
+        // Mostrar seção de consultas
+        function mostrarConsultas() {
+            const consultasSection = document.getElementById('consultas-section');
+            consultasSection.style.display = 'block';
+            consultasSection.scrollIntoView({ behavior: 'smooth' });
+            
+            // Carregar consultas se existir produto atual
+            if (produtoAtual && produtoAtual.produto_id) {
+                carregarConsultasProduto(produtoAtual.produto_id);
+            }
+        }
+        
+        // Ocultar seção de consultas
+        function ocultarConsultas() {
+            const consultasSection = document.getElementById('consultas-section');
+            consultasSection.style.display = 'none';
+        }
+        
+        // Alternar entre abas de consulta
+        function mostrarConsultasAgente(agente) {
+            // Remover active de todas as abas e painéis
+            document.querySelectorAll('.consultation-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.consultation-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // Ativar aba e painel selecionados
+            document.querySelector(`[onclick="mostrarConsultasAgente('${agente}')"]`).classList.add('active');
+            document.getElementById(`consultas-${agente}`).classList.add('active');
+        }
+        
+        // Carregar consultas de um produto
+        async function carregarConsultasProduto(produtoId) {
+            try {
+                const response = await fetch(`/api/v1/consultas-metadados/${produtoId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar consultas');
+                }
+                
+                const consultas = await response.json();
+                
+                // Organizar consultas por agente
+                const consultasPorAgente = {
+                    'classificacao': [],
+                    'ncm': [],
+                    'cest': [],
+                    'expansion': [],
+                    'metadados': []
+                };
+                
+                consultas.forEach(consulta => {
+                    if (consultasPorAgente[consulta.agente_nome]) {
+                        consultasPorAgente[consulta.agente_nome].push(consulta);
+                    }
+                });
+                
+                // Atualizar cada painel
+                Object.keys(consultasPorAgente).forEach(agente => {
+                    atualizarPainelConsultas(agente, consultasPorAgente[agente]);
+                });
+                
+                // Carregar metadados dos bancos
+                await carregarMetadadosBancos();
+                
+            } catch (error) {
+                console.error('Erro ao carregar consultas:', error);
+                mostrarAlerta('Erro ao carregar consultas dos agentes', 'error');
+            }
+        }
+        
+        // Atualizar painel de consultas de um agente
+        function atualizarPainelConsultas(agente, consultas) {
+            const painel = document.getElementById(`consultas-${agente}`);
+            if (!painel) return;
+            
+            const container = painel.querySelector('.consultation-items') || painel;
+            
+            if (consultas.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-consultations">
+                        <i class="fas fa-database"></i>
+                        <p>Nenhuma consulta registrada para este agente</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = consultas.map(consulta => `
+                <div class="consultation-item">
+                    <div class="consultation-header">
+                        <span class="consultation-type">${consulta.tipo_consulta}</span>
+                        <span class="consultation-time">${formatarDataHora(consulta.timestamp)}</span>
+                    </div>
+                    <div class="consultation-details">
+                        <div class="consultation-metric">
+                            <div class="consultation-metric-label">Fonte de Dados</div>
+                            <div class="consultation-metric-value">${consulta.fonte_dados}</div>
+                        </div>
+                        <div class="consultation-metric">
+                            <div class="consultation-metric-label">Tempo de Execução</div>
+                            <div class="consultation-metric-value">${consulta.tempo_execucao_ms}ms</div>
+                        </div>
+                        <div class="consultation-metric">
+                            <div class="consultation-metric-label">Resultados Encontrados</div>
+                            <div class="consultation-metric-value">${consulta.resultados_encontrados}</div>
+                        </div>
+                        <div class="consultation-metric">
+                            <div class="consultation-metric-label">Score de Qualidade</div>
+                            <div class="consultation-metric-value">${(consulta.qualidade_score * 100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Carregar metadados dos bancos de dados
+        async function carregarMetadadosBancos() {
+            try {
+                const response = await fetch('/api/v1/metadados-bancos');
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar metadados dos bancos');
+                }
+                
+                const metadados = await response.json();
+                const painel = document.getElementById('consultas-metadados');
+                
+                if (!painel) return;
+                
+                painel.innerHTML = `
+                    <h4><i class="fas fa-info-circle"></i> Informações dos Bancos de Dados</h4>
+                    <div class="database-info">
+                        ${metadados.map(db => `
+                            <div class="database-card">
+                                <div class="database-name">${db.nome}</div>
+                                <div class="database-description">${db.descricao}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Erro ao carregar metadados dos bancos:', error);
+            }
+        }
+        
+        // Recarregar consultas
+        function recarregarConsultas() {
+            if (produtoAtual && produtoAtual.produto_id) {
+                carregarConsultasProduto(produtoAtual.produto_id);
+                mostrarAlerta('Consultas recarregadas!', 'success');
+            }
+        }
+        
+        // Função auxiliar para formatar data e hora
+        function formatarDataHora(timestamp) {
+            const data = new Date(timestamp);
+            return data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+        
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', inicializar);
+    </script>
+</body>
+</html>
