@@ -19,9 +19,10 @@ try {
 Write-Host ""
 Write-Host "Iniciando servidor em http://127.0.0.1:8000" -ForegroundColor Cyan
 Write-Host "Documentacao em http://127.0.0.1:8000/api/docs" -ForegroundColor Cyan
+Write-Host "Interface Web em http://127.0.0.1:8000/static/interface_revisao.html" -ForegroundColor Green
 Write-Host ""
 Write-Host "Pressione Ctrl+C para parar o servidor" -ForegroundColor Yellow
 Write-Host ""
 
-# Usar o comando setup-review --start-api que ja existe
+# Usar o comando setup-review --start-api que ja existe (sem hot reload)
 & $pythonExe src/main.py setup-review --start-api

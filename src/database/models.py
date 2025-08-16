@@ -42,12 +42,12 @@ class ClassificacaoRevisao(Base):
     gtin_observacoes = Column(Text)  # Observações sobre o GTIN
     
     # Classificação original (do banco de dados)
-    ncm_original = Column(String(10))
-    cest_original = Column(String(10))
+    ncm_original = Column(String(15))
+    cest_original = Column(String(15))
     
     # Classificação sugerida pelo sistema
-    ncm_sugerido = Column(String(10))
-    cest_sugerido = Column(String(10))
+    ncm_sugerido = Column(String(15))
+    cest_sugerido = Column(String(15))
     confianca_sugerida = Column(Float)
     justificativa_sistema = Column(Text)
     
@@ -56,8 +56,8 @@ class ClassificacaoRevisao(Base):
     # Valores possíveis: PENDENTE_REVISAO, APROVADO, CORRIGIDO
     
     # Classificação corrigida pelo especialista
-    ncm_corrigido = Column(String(10))
-    cest_corrigido = Column(String(10))
+    ncm_corrigido = Column(String(15))
+    cest_corrigido = Column(String(15))
     justificativa_correcao = Column(Text)
     
     # Dados da revisão
@@ -156,8 +156,8 @@ class GoldenSetEntry(Base):
     gtin_validado = Column(String(50))  # GTIN final validado e revisado por humanos
     
     # Classificação final validada
-    ncm_final = Column(String(10), nullable=False)  # NCM revisado por humanos
-    cest_final = Column(String(10))  # CEST revisado por humanos
+    ncm_final = Column(String(15), nullable=False)  # NCM revisado por humanos
+    cest_final = Column(String(15))  # CEST revisado por humanos
     confianca_original = Column(Float)  # Confiança que o sistema tinha originalmente
     
     # Metadados da validação

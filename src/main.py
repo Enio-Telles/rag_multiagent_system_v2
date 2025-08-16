@@ -420,8 +420,8 @@ def command_setup_review(args):
                 logger.info("Documentação disponível em http://localhost:8000/api/docs")
                 logger.info("Pressione Ctrl+C para parar")
                 
-                # Usar string de import para habilitar reload
-                uvicorn.run("api.review_api:app", host="0.0.0.0", port=8000, reload=True)
+                # Usar string de import sem reload para estabilidade em produção
+                uvicorn.run("api.review_api:app", host="0.0.0.0", port=8000, reload=False)
                 
             except KeyboardInterrupt:
                 print("\n👋 API encerrada pelo usuário")
