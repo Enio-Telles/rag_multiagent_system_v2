@@ -1,0 +1,158 @@
+{
+  "test_results": {
+    "ncm_queries": {
+      "busca_ncm_especifico": {
+        "codigo_testado": "01012100",
+        "encontrado": true,
+        "tempo_consulta": "0.0150s",
+        "dados": {
+          "codigo_ncm": "01012100",
+          "descricao_oficial": "Animais vivos.. Cavalos, asininos e muares, vivos.. -- Reprodutores de raça pura",
+          "descricao_curta": "Animais vivos.. Cavalos, asininos e muares, vivos.. -- Reprodutores de raça pura",
+          "nivel_hierarquico": 8,
+          "codigo_pai": "010121"
+        }
+      },
+      "busca_por_nivel": {
+        "nivel_testado": 2,
+        "quantidade_encontrada": 96,
+        "tempo_consulta": "0.0070s"
+      },
+      "busca_por_padrao": {
+        "padrao_testado": "01.01",
+        "quantidade_encontrada": 0,
+        "tempo_consulta": "0.0070s"
+      },
+      "integridade_hierarquica": {
+        "ncms_orfaos": 4056,
+        "tempo_verificacao": "0.0080s"
+      }
+    },
+    "cest_searches": {
+      "busca_cest_especifico": {
+        "codigo_testado": "01.001.00",
+        "encontrado": true,
+        "tempo_consulta": "0.0010s",
+        "dados": {
+          "codigo_cest": "01.001.00",
+          "descricao_cest": "Catalisadores em colmeia cerâmica ou metálica para conversão catalítica de gases de escape de veículos e outros catalisadores. (NR dada pelo Dec. 29048/24 – efeitos a partir de 12.01.24)",
+          "descricao_resumida": null,
+          "categoria_produto": "GERAL"
+        }
+      },
+      "total_cests": {
+        "quantidade": 1051,
+        "tempo_consulta": "0.0010s"
+      },
+      "cests_com_categoria": {
+        "quantidade_amostra": 10,
+        "tempo_consulta": "0.0010s",
+        "exemplos": [
+          "01.001.00",
+          "01.002.00",
+          "01.003.00",
+          "01.004.00",
+          "01.005.00"
+        ]
+      }
+    },
+    "ncm_cest_mappings": {
+      "cests_para_ncm": {
+        "ncm_testado": "01012100",
+        "quantidade_cests": 0,
+        "tempo_consulta": "0.0010s",
+        "cests_encontrados": []
+      },
+      "estatisticas_mapeamento": {
+        "total_mapeamentos": 33435,
+        "tempo_consulta": "0.0030s"
+      },
+      "qualidade_mapeamentos": {
+        "tipos_relacao": {
+          "DIRETO": 3282,
+          "HERDADO": 30153
+        },
+        "tempo_consulta": "0.0060s"
+      }
+    },
+    "product_examples": {
+      "total_produtos": {
+        "quantidade": 2181,
+        "tempo_consulta": "0.0020s"
+      },
+      "produtos_por_ncm": {
+        "ncm_testado": "85061020",
+        "quantidade_produtos": 5,
+        "tempo_consulta": "0.0010s"
+      },
+      "integridade_produtos": {
+        "produtos_orfaos": 0,
+        "tempo_verificacao": "0.0030s"
+      }
+    },
+    "data_integrity": {
+      "verificacoes_integridade": {
+        "ncms_duplicados": {
+          "quantidade": 0,
+          "tempo_verificacao": "0.0020s"
+        },
+        "cests_duplicados": {
+          "quantidade": 0,
+          "tempo_verificacao": "0.0020s"
+        },
+        "mapeamentos_ncm_orfaos": {
+          "quantidade": 0,
+          "tempo_verificacao": "0.0060s"
+        },
+        "mapeamentos_cest_orfaos": {
+          "quantidade": 0,
+          "tempo_verificacao": "0.0040s"
+        },
+        "produtos_orfaos": {
+          "quantidade": 0,
+          "tempo_verificacao": "0.0010s"
+        }
+      }
+    }
+  },
+  "performance_results": {
+    "consulta_ncm": {
+      "codigos_testados": [
+        "01012100",
+        "01",
+        "0101",
+        "01012",
+        "01012900"
+      ],
+      "tempo_medio_sqlite": "0.000433s",
+      "tempos_individuais": [
+        "0.000000s",
+        "0.000000s",
+        "0.000993s",
+        "0.000000s",
+        "0.001174s"
+      ]
+    },
+    "busca_cests": {
+      "ncm_testado": "01012100",
+      "quantidade_cests": 0,
+      "tempo_busca": "0.000000s"
+    },
+    "consulta_complexa": {
+      "registros_retornados": 37,
+      "tempo_consulta": "0.001000s"
+    }
+  },
+  "validation_summary": {
+    "testes_executados": 5,
+    "testes_bem_sucedidos": 5,
+    "taxa_sucesso": "100.0%",
+    "estatisticas_base": {
+      "total_ncms": 15141,
+      "total_cests": 1051,
+      "total_mapeamentos": 33435,
+      "total_produtos": 2181
+    }
+  },
+  "timestamp": "2025-08-16T15:08:04.546830"
+}

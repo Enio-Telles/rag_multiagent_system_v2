@@ -106,6 +106,34 @@ class ConsultaMetadadosService:
             logger.error(f"❌ Erro ao registrar resultados: {e}")
             return False
     
+    def registrar_resultado(self, consulta_id: str, resultados: List[Dict[str, Any]], tempo_execucao_ms: int) -> bool:
+        """
+        Alias para registrar_resultados - para compatibilidade
+        
+        Args:
+            consulta_id: ID da consulta
+            resultados: Lista de resultados encontrados
+            tempo_execucao_ms: Tempo de execução em millisegundos
+            
+        Returns:
+            bool: True se registrou com sucesso
+        """
+        return self.registrar_resultados(consulta_id, resultados, tempo_execucao_ms, len(resultados))
+    
+    def finalizar_consulta(self, consulta_id: str, resultados: List[Dict[str, Any]], tempo_execucao_ms: int) -> bool:
+        """
+        Finaliza uma consulta registrando os resultados obtidos
+        
+        Args:
+            consulta_id: ID da consulta retornado por registrar_consulta
+            resultados: Lista de resultados encontrados
+            tempo_execucao_ms: Tempo de execução em millisegundos
+            
+        Returns:
+            bool: True se finalizou com sucesso
+        """
+        return self.registrar_resultados(consulta_id, resultados, tempo_execucao_ms, len(resultados))
+    
     def obter_consultas_produto(self, produto_id: int) -> List[Dict[str, Any]]:
         """
         Obtém todas as consultas realizadas para um produto

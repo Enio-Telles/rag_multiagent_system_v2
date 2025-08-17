@@ -27,8 +27,8 @@ def get_database_url():
     db_type = os.getenv('DB_TYPE', 'postgresql')
     
     if db_type == 'sqlite':
-        # SQLite para desenvolvimento/testes
-        db_path = Path(__file__).parent.parent.parent / "data" / "rag_system.db"
+        # SQLite para desenvolvimento/testes - usar o banco unificado
+        db_path = Path(__file__).parent.parent.parent / "data" / "unified_rag_system.db"
         db_path.parent.mkdir(exist_ok=True)
         return f"sqlite:///{db_path}"
     
@@ -42,7 +42,7 @@ def get_database_url():
     if not all([user, password, database]):
         # Fallback para SQLite se PostgreSQL não estiver configurado
         logger.warning("PostgreSQL não configurado completamente, usando SQLite")
-        db_path = Path(__file__).parent.parent.parent / "data" / "rag_system.db"
+        db_path = Path(__file__).parent.parent.parent / "data" / "unified_rag_system.db"
         db_path.parent.mkdir(exist_ok=True)
         return f"sqlite:///{db_path}"
     

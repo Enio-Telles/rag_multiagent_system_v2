@@ -52,9 +52,9 @@ class BaseAgent(ABC):
                 produto_id=self.produto_id_atual,
                 agente_nome=self.name.lower().replace('agent', ''),
                 tipo_consulta=tipo_consulta,
-                fonte_dados=fonte_dados,
-                query_executada=query[:1000],  # Limitar tamanho
-                contexto_adicional=contexto or {}
+                query_original=query[:1000],  # Limitar tamanho
+                banco_origem=fonte_dados,
+                metadados=contexto or {}
             )
             
             # Armazenar para referência local
@@ -80,12 +80,20 @@ class BaseAgent(ABC):
             return
             
         try:
+            # Criar lista de resultados simulados para compatibilidade
+            resultados_simulados = []
+            if resultados_encontrados > 0:
+                for i in range(min(resultados_encontrados, 5)):  # Máximo 5 itens simulados
+                    resultados_simulados.append({
+                        "indice": i,
+                        "score": qualidade_score,
+                        "metadata": metadata_resultados or {}
+                    })
+            
             self.consulta_metadados_service.registrar_resultado(
                 consulta_id=consulta_id,
-                tempo_execucao_ms=tempo_execucao_ms,
-                resultados_encontrados=resultados_encontrados,
-                qualidade_score=qualidade_score,
-                metadata_resultados=metadata_resultados or {}
+                resultados=resultados_simulados,
+                tempo_execucao_ms=tempo_execucao_ms
             )
         except Exception as e:
             print(f"Erro ao finalizar consulta: {e}")

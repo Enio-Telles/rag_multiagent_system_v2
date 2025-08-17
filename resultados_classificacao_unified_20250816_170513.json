@@ -1,0 +1,31 @@
+{
+  "timestamp": "20250816_170513",
+  "sistema": "unified",
+  "total_produtos": 2,
+  "resultados": [
+    {
+      "produto_id": 10001,
+      "descricao_produto": "Smartphone Samsung Galaxy S24 Ultra 512GB Preto",
+      "codigo_produto": "SAM-S24U-512-BK",
+      "classificacao_id": 308,
+      "ncm_classificado": "8517",
+      "cest_classificado": "21.110.00",
+      "confianca_consolidada": 0.95,
+      "justificativa": "Classificação automática baseada em análise de texto: Smartphone Samsung Galaxy S24 Ultra 512GB Preto...",
+      "tempo_processamento_ms": 36,
+      "sistema": "unified_sqlite"
+    },
+    {
+      "produto_id": 10002,
+      "descricao_produto": "Refrigerante Coca-Cola Zero Açúcar 350ml Lata",
+      "codigo_produto": "COCA-ZERO-350",
+      "classificacao_id": 309,
+      "ncm_classificado": "22021000",
+      "cest_classificado": "03.007.00",
+      "confianca_consolidada": 0.95,
+      "justificativa": "Classificação automática baseada em análise de texto: Refrigerante Coca-Cola Zero Açúcar 350ml Lata...",
+      "tempo_processamento_ms": 2,
+      "sistema": "unified_sqlite"
+    }
+  ]
+}

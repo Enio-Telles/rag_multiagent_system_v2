@@ -20,6 +20,9 @@ pydantic>=2.4.0
 # streamlit>=1.28.0  # Para dashboard alternativo
 # dash>=2.14.0       # Para dashboard interativo
 
+# Dependências opcionais para processamento de documentos
+# PyPDF2>=3.0.0      # Para extração de texto de PDFs (NESH)
+
 # Dependências de desenvolvimento e teste
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

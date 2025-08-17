@@ -1,0 +1,48 @@
+{
+  "timestamp": "20250816_154423",
+  "data_execucao": "2025-08-16T15:44:23.030788",
+  "resultados": {
+    "servico_unificado": true,
+    "endpoints_api": {
+      "unified": [
+        {
+          "endpoint": "/api/v1/sistema/health",
+          "status": "HTTP 404"
+        },
+        {
+          "endpoint": "/api/v1/sistema/status",
+          "status": "HTTP 404"
+        },
+        {
+          "endpoint": "/api/v1/ncm/buscar?nivel=2&limite=5",
+          "status": "HTTP 404"
+        },
+        {
+          "endpoint": "/api/v1/dashboard/stats",
+          "status": "HTTP 500"
+        }
+      ],
+      "review": [
+        {
+          "endpoint": "/api/health",
+          "status": "CONEXAO_FALHOU"
+        },
+        {
+          "endpoint": "/api/sistema/status",
+          "status": "CONEXAO_FALHOU"
+        },
+        {
+          "endpoint": "/api/classificacoes/pendentes?limite=5",
+          "status": "CONEXAO_FALHOU"
+        }
+      ]
+    },
+    "fluxo_integracao": false,
+    "performance": true
+  },
+  "resumo": {
+    "total_testes": 4,
+    "testes_aprovados": 3,
+    "testes_falharam": 1
+  }
+}

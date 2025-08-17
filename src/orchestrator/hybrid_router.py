@@ -20,6 +20,9 @@ from agents.ncm_agent import NCMAgent
 from agents.cest_agent import CESTAgent
 from agents.reconciler_agent import ReconcilerAgent
 
+# Importar novo serviço de base de conhecimento SQLite
+from services.knowledge_base_service import KnowledgeBaseService
+
 # Setup logging
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,15 @@ try:
     CONSULTA_METADADOS_SERVICE_AVAILABLE = True
 except ImportError:
     CONSULTA_METADADOS_SERVICE_AVAILABLE = False
+    logger.warning("Serviço de rastreamento de consultas não disponível")
+
+# Importar sistema de contexto da empresa
+try:
+    from services.empresa_contexto_service import EmpresaContextoService
+    EMPRESA_CONTEXTO_SERVICE_AVAILABLE = True
+except ImportError:
+    EMPRESA_CONTEXTO_SERVICE_AVAILABLE = False
+    logger.warning("Serviço de contexto da empresa não disponível")
     logger.warning("Serviço de rastreamento de consultas não disponível")
 
 class HybridRouter:
@@ -93,6 +105,15 @@ class HybridRouter:
             except Exception as e:
                 logger.warning(f"Erro ao inicializar serviço de consultas: {e}")
         
+        # Sistema de contexto da empresa
+        self.empresa_contexto_service = None
+        if EMPRESA_CONTEXTO_SERVICE_AVAILABLE:
+            try:
+                self.empresa_contexto_service = EmpresaContextoService()
+                logger.info("Serviço de contexto da empresa ativado")
+            except Exception as e:
+                logger.warning(f"Erro ao inicializar serviço de contexto: {e}")
+        
         # Agentes especializados
         self.expansion_agent = ExpansionAgent(self.llm_client, self.config)
         self.aggregation_agent = AggregationAgent(self.llm_client, self.config)
@@ -103,18 +124,17 @@ class HybridRouter:
         # Cache para otimização com limite de tamanho
         self.classification_cache = {}
         
-        # Banco de mapeamento estruturado
-        self.mapping_db = self._load_mapping_db()
+        # Novo serviço de base de conhecimento SQLite (substitui JSON)
+        self.knowledge_service = KnowledgeBaseService()
         
         # Carregar dados de referência adicionais
-        self.cest_reference_db = self._load_cest_reference_db()
         self.abc_farma_db = self._load_abc_farma_db()
     
     def _validate_configuration(self) -> None:
         """Valida os parâmetros de configuração necessários."""
         required_attrs = [
             'OLLAMA_URL', 'OLLAMA_MODEL', 'VECTOR_DIMENSION',
-            'FAISS_INDEX_FILE', 'METADATA_DB_FILE', 'NCM_MAPPING_FILE'
+            'FAISS_INDEX_FILE', 'METADATA_DB_FILE'
         ]
         
         for attr in required_attrs:
@@ -138,65 +158,46 @@ class HybridRouter:
                 del self.classification_cache[key]
             
             logger.info(f"Cache limpo: removidos {items_to_remove} itens")
-    
-    def _load_mapping_db(self) -> Dict:
-        """Carrega o banco de mapeamento NCM estruturado."""
+
+    def get_ncm_info(self, codigo_ncm: str) -> Optional[Dict]:
+        """
+        Busca informações de NCM usando o serviço SQLite (substitui _load_mapping_db)
+        """
         try:
-            mapping_file = Path(self.config.NCM_MAPPING_FILE)
-            if not mapping_file.exists():
-                logger.warning(f"Arquivo de mapeamento não encontrado: {mapping_file}")
-                return {}
-                
-            with open(mapping_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                logger.info(f"Banco de mapeamento carregado: {len(data)} entradas")
-                return data
-                
-        except (FileNotFoundError, PermissionError) as e:
-            logger.error(f"Erro de acesso ao arquivo de mapeamento: {e}")
-            return {}
-        except json.JSONDecodeError as e:
-            logger.error(f"Erro ao decodificar JSON do mapeamento: {e}")
-            return {}
+            return self.knowledge_service.buscar_ncm_por_codigo(codigo_ncm)
         except Exception as e:
-            logger.error(f"Erro inesperado ao carregar banco de mapeamento: {e}")
-            return {}
+            logger.error(f"Erro ao buscar NCM {codigo_ncm}: {e}")
+            return None
     
-    def _load_cest_reference_db(self) -> Dict:
-        """Carrega dados de referência CEST do conv_142_formatado.json."""
+    def get_cests_for_ncm(self, codigo_ncm: str) -> List[Dict]:
+        """
+        Busca CESTs associados a um NCM usando o serviço SQLite
+        """
         try:
-            cest_df = self.data_loader.load_cest_mapping()
-            if cest_df is None or cest_df.empty:
-                logger.warning("Nenhum dado CEST de referência carregado")
-                return {}
-            
-            # Criar índice por NCM para busca rápida
-            cest_by_ncm = {}
-            
-            for _, row in cest_df.iterrows():
-                ncm = str(row.get('NCM_SH', row.get('ncm', ''))).strip()
-                cest = str(row.get('CEST', row.get('cest', ''))).strip()
-                descricao = str(row.get('DESCRICAO', row.get('descricao_oficial_cest', ''))).strip()
-                segmento = row.get('SEGMENTO', row.get('segmento', ''))
-                anexo = str(row.get('ANEXO', row.get('Anexo', ''))).strip()
-                
-                if ncm and cest:
-                    if ncm not in cest_by_ncm:
-                        cest_by_ncm[ncm] = []
-                    
-                    cest_by_ncm[ncm].append({
-                        'cest': cest,
-                        'descricao': descricao,
-                        'segmento': segmento,
-                        'anexo': anexo
-                    })
-            
-            logger.info(f"Banco de referência CEST carregado: {len(cest_by_ncm)} NCMs com CESTs associados")
-            return cest_by_ncm
-            
+            return self.knowledge_service.buscar_cests_hierarquia_ncm(codigo_ncm)
         except Exception as e:
-            logger.error(f"Erro ao carregar banco de referência CEST: {e}")
-            return {}
+            logger.error(f"Erro ao buscar CESTs para NCM {codigo_ncm}: {e}")
+            return []
+    
+    def get_product_examples(self, codigo_ncm: str, limite: int = 5) -> List[Dict]:
+        """
+        Busca produtos exemplo para um NCM usando o serviço SQLite
+        """
+        try:
+            return self.knowledge_service.buscar_exemplos_por_ncm(codigo_ncm, limite)
+        except Exception as e:
+            logger.error(f"Erro ao buscar exemplos para NCM {codigo_ncm}: {e}")
+            return []
+    
+    def search_ncms_by_keywords(self, palavras: List[str], limite: int = 20) -> List[Dict]:
+        """
+        Busca NCMs por palavras-chave usando o serviço SQLite
+        """
+        try:
+            return self.knowledge_service.buscar_ncms_por_palavras(palavras, limite)
+        except Exception as e:
+            logger.error(f"Erro ao buscar NCMs por palavras {palavras}: {e}")
+            return []
     
     def _load_abc_farma_db(self) -> Dict:
         """Carrega dados da Tabela ABC Farma para identificação de medicamentos."""
@@ -295,36 +296,35 @@ class HybridRouter:
             return False
     
     def _get_structured_context(self, ncm_candidate: str, produto_expandido: Dict = None) -> str:
-        """Obtém contexto estruturado do banco de mapeamento e dados de referência."""
+        """Obtém contexto estruturado usando o serviço SQLite."""
         context_parts = []
         
-        # Contexto do banco de mapeamento original
-        if ncm_candidate and ncm_candidate in self.mapping_db:
-            data = self.mapping_db[ncm_candidate]
-            context_parts.append(f"""
+        # Contexto NCM usando serviço SQLite
+        if ncm_candidate:
+            ncm_info = self.get_ncm_info(ncm_candidate)
+            if ncm_info:
+                context_parts.append(f"""
 INFORMAÇÕES OFICIAIS NCM {ncm_candidate}:
-- Descrição Oficial: {data.get('descricao_oficial', 'N/A')}
-- Descrição Curta: {data.get('descricao_curta', 'N/A')}
-
-CESTs Disponíveis para este NCM ({len(data.get('cests_associados', []))} encontrados):""")
-            
-            for cest in data.get('cests_associados', []):
-                context_parts.append(f"- CEST {cest['cest']}: {cest['descricao_cest']}")
-            
-            if data.get('gtins_exemplos'):
-                context_parts.append(f"\nExemplos de Produtos Classificados ({len(data['gtins_exemplos'])} encontrados):")
-                for exemplo in data['gtins_exemplos'][:3]:  # Limitar a 3 exemplos
-                    context_parts.append(f"- {exemplo.get('descricao_produto', 'N/A')}")
-        
-        # Contexto dos dados de referência CEST (conv_142_formatado)
-        if ncm_candidate and ncm_candidate in self.cest_reference_db:
-            cests_ref = self.cest_reference_db[ncm_candidate]
-            context_parts.append(f"\nREFERÊNCIA CEST OFICIAL (Conv. 142) para NCM {ncm_candidate}:")
-            
-            for cest_info in cests_ref[:5]:  # Limitar a 5 CESTs
-                context_parts.append(f"- CEST {cest_info['cest']} (Segmento {cest_info['segmento']}): {cest_info['descricao']}")
-                if cest_info['anexo']:
-                    context_parts.append(f"  Anexo: {cest_info['anexo']}")
+- Descrição Oficial: {ncm_info.get('descricao_oficial', 'N/A')}
+- Descrição Curta: {ncm_info.get('descricao_curta', 'N/A')}
+- Nível Hierárquico: {ncm_info.get('nivel_hierarquico', 'N/A')}""")
+                
+                # Buscar CESTs associados
+                cests = self.get_cests_for_ncm(ncm_candidate)
+                if cests:
+                    context_parts.append(f"\nCESTs Disponíveis para este NCM ({len(cests)} encontrados):")
+                    for cest in cests[:5]:  # Limitar a 5 CESTs
+                        tipo_relacao = cest.get('tipo_relacao', 'DIRETO')
+                        confianca = cest.get('confianca', 1.0)
+                        context_parts.append(f"- CEST {cest['codigo_cest']} ({tipo_relacao}, {confianca:.1f}): {cest['descricao_cest']}")
+                
+                # Buscar exemplos de produtos
+                exemplos = self.get_product_examples(ncm_candidate, 3)
+                if exemplos:
+                    context_parts.append(f"\nExemplos de Produtos Classificados ({len(exemplos)} encontrados):")
+                    for exemplo in exemplos:
+                        qualidade = exemplo.get('qualidade_classificacao', 0.0)
+                        context_parts.append(f"- {exemplo.get('descricao_produto', 'N/A')} (Qualidade: {qualidade:.1f})")
         
         # Contexto específico para medicamentos (ABC Farma)
         if produto_expandido:
@@ -727,6 +727,18 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
         
         print(f"🎯 CLASSIFICANDO PRODUTO COM EXPLICAÇÕES: {produto.get('descricao_produto', 'N/A')}")
         
+        # Obter contexto da empresa se disponível
+        contexto_empresa = None
+        if self.empresa_contexto_service:
+            try:
+                contexto_empresa = self.empresa_contexto_service.obter_contexto_empresa()
+                if contexto_empresa:
+                    print(f"🏢 CONTEXTO EMPRESA APLICADO: {contexto_empresa.get('tipo_atividade', 'N/A')}")
+                    if contexto_empresa.get('cest_especifico_aplicavel'):
+                        print(f"📋 CEST ESPECÍFICO PARA ATIVIDADE: {contexto_empresa.get('cest_especifico_aplicavel')}")
+            except Exception as e:
+                logger.warning(f"Erro ao obter contexto da empresa: {e}")
+        
         # Inicializar vector store
         self._initialize_vector_store()
         
@@ -759,8 +771,17 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             print("🔍 Etapa 1: Expandindo descrição com explicação...")
             descricao = produto.get('descricao_produto', '')
             
+            # Preparar contexto inicial com empresa se disponível
+            contexto_inicial = {"produto_id": produto_id}
+            if contexto_empresa:
+                contexto_inicial["empresa_contexto"] = contexto_empresa
+                if self.empresa_contexto_service:
+                    contexto_inicial = self.empresa_contexto_service.aplicar_contexto_agente(
+                        contexto_inicial, "expansion", produto
+                    )
+            
             # Ativar explicações no agente
-            self.expansion_agent.iniciar_explicacao(descricao, {"produto_id": produto_id})
+            self.expansion_agent.iniciar_explicacao(descricao, contexto_inicial)
             expansion_result = self.expansion_agent.run(descricao)
             
             # Finalizar explicação com detalhes específicos
@@ -771,6 +792,7 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             - Palavras-chave fiscais extraídas: {expansion_result.get('result', {}).get('palavras_chave_fiscais', 'N/A')}
             - Material predominante: {expansion_result.get('result', {}).get('material_predominante', 'N/A')}
             - Categoria do produto: {expansion_result.get('result', {}).get('categoria_produto', 'N/A')}
+            {f"- Contexto empresa considerado: {contexto_empresa.get('tipo_atividade', 'N/A')}" if contexto_empresa else ""}
             """
             
             expansion_result = self.expansion_agent.finalizar_explicacao(
@@ -793,7 +815,16 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             # ========================================================================
             print("🎲 Etapa 2: Análise de agregação...")
             
-            self.aggregation_agent.iniciar_explicacao([produto], {"produto_id": produto_id})
+            # Preparar contexto para agregação
+            contexto_agregacao = {"produto_id": produto_id}
+            if contexto_empresa:
+                contexto_agregacao["empresa_contexto"] = contexto_empresa
+                if self.empresa_contexto_service:
+                    contexto_agregacao = self.empresa_contexto_service.aplicar_contexto_agente(
+                        contexto_agregacao, "aggregation", produto
+                    )
+            
+            self.aggregation_agent.iniciar_explicacao([produto], contexto_agregacao)
             aggregation_result = self.aggregation_agent.run([produto])
             
             explicacao_agregacao = f"""
@@ -840,6 +871,14 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
                 "expansion_data": expansion_data
             }
             
+            # Aplicar contexto da empresa ao NCM se disponível
+            if contexto_empresa:
+                context["empresa_contexto"] = contexto_empresa
+                if self.empresa_contexto_service:
+                    context = self.empresa_contexto_service.aplicar_contexto_agente(
+                        context, "ncm", produto
+                    )
+            
             # Classificar NCM com explicação
             self.ncm_agent.iniciar_explicacao(produto, context)
             ncm_result = self.ncm_agent.run(produto, context)
@@ -852,7 +891,7 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             - Justificativa: {ncm_data.get('justificativa', 'N/A')}
             - Capítulo NCM: {ncm_data.get('capitulo_ncm', 'N/A')}
             - Palavras-chave utilizadas: {', '.join(palavras_chave)}
-            - Produtos similares consultados: {len(semantic_context.get('resultados', []))} encontrados
+            - Produtos similares consultados: {len(semantic_context) if isinstance(semantic_context, list) else 0} encontrados
             """
             
             ncm_result = self.ncm_agent.finalizar_explicacao(
@@ -878,6 +917,17 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             ncm_determinado = ncm_data.get('ncm_recomendado', '')
             context['structured_context'] = self._get_structured_context(ncm_determinado, produto)
             
+            # Aplicar contexto da empresa ao CEST (mais importante aqui)
+            if contexto_empresa:
+                context["empresa_contexto"] = contexto_empresa
+                if self.empresa_contexto_service:
+                    context = self.empresa_contexto_service.aplicar_contexto_agente(
+                        context, "cest", produto
+                    )
+                    # Log especial para CEST específico de atividade
+                    if contexto_empresa.get('cest_especifico_aplicavel'):
+                        print(f"🎯 APLICANDO CEST ESPECÍFICO POR ATIVIDADE: {contexto_empresa.get('cest_especifico_aplicavel')}")
+            
             self.cest_agent.iniciar_explicacao(produto, context)
             cest_result = self.cest_agent.run(produto, ncm_data, context)
             
@@ -889,6 +939,8 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             - Justificativa: {cest_data.get('justificativa', 'N/A')}
             - NCM base utilizado: {ncm_determinado}
             - Aplicável à substituição tributária: {cest_data.get('aplicavel_st', 'N/A')}
+            {f"- Contexto empresa aplicado: {contexto_empresa.get('tipo_atividade', 'N/A')}" if contexto_empresa else ""}
+            {f"- CEST específico por atividade: {contexto_empresa.get('cest_especifico_aplicavel', 'N/A')}" if contexto_empresa and contexto_empresa.get('cest_especifico_aplicavel') else ""}
             """
             
             cest_result = self.cest_agent.finalizar_explicacao(
@@ -910,7 +962,15 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             # ========================================================================
             print("🔄 Etapa 5: Reconciliação final com explicação...")
             
-            self.reconciler_agent.iniciar_explicação(produto, context)
+            # Aplicar contexto da empresa na reconciliação
+            if contexto_empresa:
+                context["empresa_contexto"] = contexto_empresa
+                if self.empresa_contexto_service:
+                    context = self.empresa_contexto_service.aplicar_contexto_agente(
+                        context, "reconciler", produto
+                    )
+            
+            self.reconciler_agent.iniciar_explicacao(produto, context)
             reconciliation_result = self.reconciler_agent.run(produto, ncm_data, cest_data, context)
             
             reconciliation_data = reconciliation_result.get('result', {})
@@ -924,6 +984,8 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
             - Consistência dos agentes: {reconciliation_data.get('auditoria', {}).get('consistente', False)}
             - Conflitos detectados: {len(reconciliation_data.get('auditoria', {}).get('conflitos_identificados', []))}
             - Ajustes realizados: {len(reconciliation_data.get('auditoria', {}).get('ajustes_realizados', []))}
+            {f"- Contexto empresa considerado: {contexto_empresa.get('tipo_atividade', 'N/A')}" if contexto_empresa else ""}
+            {f"- CEST aplicado por atividade específica: {contexto_empresa.get('cest_especifico_aplicavel', 'N/A')}" if contexto_empresa and contexto_empresa.get('cest_especifico_aplicavel') else ""}
             """
             
             reconciliation_result = self.reconciler_agent.finalizar_explicacao(
@@ -951,6 +1013,9 @@ INDICAÇÃO DE MEDICAMENTO DETECTADA:
                 'justificativa_final': reconciliation_data.get('justificativa_final', ''),
                 'auditoria': reconciliation_data.get('auditoria', {}),
                 'sessao_classificacao': sessao_id,
+                
+                # Contexto da empresa aplicado
+                'contexto_empresa_aplicado': contexto_empresa if contexto_empresa else None,
                 
                 # Explicações detalhadas de cada agente
                 'explicacoes_agentes': {

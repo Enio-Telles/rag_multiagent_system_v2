@@ -1,0 +1,43 @@
+{
+  "timestamp": "20250816_160357",
+  "sistema": "unified",
+  "total_produtos": 3,
+  "resultados": [
+    {
+      "produto_id": 5807,
+      "descricao_produto": "ZYXEM 5MG/ML FR 20ML GTS (ABT)",
+      "codigo_produto": "000000000004009405",
+      "classificacao_id": 265,
+      "ncm_classificado": "99999999",
+      "cest_classificado": null,
+      "confianca_consolidada": 0.5,
+      "justificativa": "Classificação automática baseada em análise de texto: ZYXEM 5MG/ML FR 20ML GTS (ABT)...",
+      "tempo_processamento_ms": 37,
+      "sistema": "unified_sqlite"
+    },
+    {
+      "produto_id": 13818,
+      "descricao_produto": "ZYXEM 5MG CX 10CP (ABT)",
+      "codigo_produto": "000000000004009383",
+      "classificacao_id": 266,
+      "ncm_classificado": "99999999",
+      "cest_classificado": null,
+      "confianca_consolidada": 0.5,
+      "justificativa": "Classificação automática baseada em análise de texto: ZYXEM 5MG CX 10CP (ABT)...",
+      "tempo_processamento_ms": 17,
+      "sistema": "unified_sqlite"
+    },
+    {
+      "produto_id": 8226,
+      "descricao_produto": "ZYXEM 5MG C 10 COMP",
+      "codigo_produto": "000000000004009383",
+      "classificacao_id": 267,
+      "ncm_classificado": "99999999",
+      "cest_classificado": null,
+      "confianca_consolidada": 0.5,
+      "justificativa": "Classificação automática baseada em análise de texto: ZYXEM 5MG C 10 COMP...",
+      "tempo_processamento_ms": 17,
+      "sistema": "unified_sqlite"
+    }
+  ]
+}

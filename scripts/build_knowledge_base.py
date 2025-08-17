@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
 scripts/build_knowledge_base.py
-Fase 1: Construção da Base de Conhecimento Estruturada
+Construção da Base de Conhecimento SQLite Unificada
 
-Este script unifica todas as fontes de dados em um banco de mapeamento eficiente.
+Este script migra todas as fontes de dados (JSON/CSV) para um banco SQLite único.
+Substitui o antigo ncm_mapping.json por consultas SQL eficientes.
 """
 
 import json
 import pandas as pd
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+import logging
+from datetime import datetime
 
 # Adicionar o diretório src ao path
 src_path = Path(__file__).parent.parent / "src"
@@ -18,333 +21,547 @@ sys.path.append(str(src_path))
 
 from config import Config
 from ingestion.data_loader import DataLoader
+from database.knowledge_models import (
+    KnowledgeBase, NCMHierarchy, CestCategory, NCMCestMapping, 
+    ProdutoExemplo, KnowledgeBaseMetadata, create_performance_indexes
+)
+from services.knowledge_base_service import KnowledgeBaseService
+from sqlalchemy import and_
 
-class KnowledgeBaseBuilder:
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class SQLiteKnowledgeBaseBuilder:
+    """
+    Construtor da Base de Conhecimento SQLite Unificada
+    Migra todos os dados de JSON/CSV para SQLite com estrutura otimizada
+    """
+    
     def __init__(self):
         self.config = Config()
         self.data_loader = DataLoader()
         
         # Garantir que os diretórios existam
-        self.config.KNOWLEDGE_BASE_DIR.mkdir(parents=True, exist_ok=True)
+        knowledge_dir = Path("data/knowledge_base")
+        knowledge_dir.mkdir(parents=True, exist_ok=True)
         
-        # Dicionário para mapear NCMs por nível hierárquico
-        self.ncm_hierarchy = {}
+        # Inicializar serviço da base de conhecimento
+        self.kb_service = KnowledgeBaseService()
+        
+        # Contadores para estatísticas
+        self.stats = {
+            'ncms_inseridos': 0,
+            'cests_inseridos': 0,
+            'mapeamentos_inseridos': 0,
+            'exemplos_inseridos': 0,
+            'erros': 0
+        }
+    
+    def build_sqlite_knowledge_base(self) -> bool:
+        """
+        Método principal - constrói a base de conhecimento SQLite completa
+        """
+        logger.info("🚀 Iniciando construção da Base de Conhecimento SQLite")
+        
+        try:
+            # 1. Criar estrutura do banco
+            self._create_database_structure()
+            
+            # 2. Popular NCMs
+            self._populate_ncm_hierarchy()
+            
+            # 3. Popular CESTs
+            self._populate_cest_categories()
+            
+            # 4. Criar mapeamentos NCM-CEST
+            self._create_ncm_cest_mappings()
+            
+            # 5. Popular produtos exemplo
+            self._populate_product_examples()
+            
+            # 6. Aplicar herança hierárquica
+            self._apply_cest_inheritance()
+            
+            # 7. Criar metadados
+            self._create_metadata()
+            
+            # 8. Verificar integridade
+            self._verify_integrity()
+            
+            # 9. Estatísticas finais
+            self._print_final_statistics()
+            
+            logger.info("🎉 Base de conhecimento SQLite construída com sucesso!")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Erro na construção da base: {e}")
+            return False
+    
+    def _create_database_structure(self):
+        """
+        Cria a estrutura do banco SQLite
+        """
+        logger.info("🏗️ Criando estrutura do banco SQLite...")
+        self.kb_service.create_tables()
+        logger.info("✅ Estrutura criada com sucesso")
     
     def _normalize_ncm(self, ncm_code: str) -> str:
         """Normaliza código NCM removendo pontos e espaços."""
         return str(ncm_code).replace(".", "").replace(" ", "").strip()
     
-    def _build_ncm_hierarchy(self, ncm_data: list):
-        """Constrói hierarquia de NCMs para permitir busca por códigos parciais."""
-        print("🏗️ Construindo hierarquia de NCMs...")
+    def _populate_ncm_hierarchy(self):
+        """
+        Popula a tabela de hierarquia NCM
+        """
+        logger.info("📋 Populando hierarquia NCM...")
         
-        for item in ncm_data:
-            code = self._normalize_ncm(item.get("Código", ""))
-            if code:
-                # Armazenar o código completo
-                self.ncm_hierarchy[code] = {
-                    "codigo_original": item.get("Código", ""),
-                    "descricao_completa": item.get("Descricao_Completa", "").strip(),
-                    "nivel": len(code)
-                }
+        ncm_data = self.data_loader.load_ncm_descriptions()
+        if not ncm_data:
+            logger.warning("⚠️ Nenhum dado NCM carregado")
+            return
         
-        print(f"✅ Hierarquia construída com {len(self.ncm_hierarchy)} códigos NCM.")
+        # Use conjunto para rastrear códigos processados
+        codigos_processados = set()
+        
+        with self.kb_service.get_session() as session:
+            batch_count = 0
+            
+            for item in ncm_data:
+                try:
+                    codigo = self._normalize_ncm(item.get("Código", ""))
+                    if not codigo:
+                        continue
+                    
+                    # Verificar se já foi processado
+                    if codigo in codigos_processados:
+                        continue
+                    
+                    # Verificar se já existe no banco
+                    existing = session.query(NCMHierarchy).filter_by(codigo_ncm=codigo).first()
+                    if existing:
+                        continue
+                    
+                    codigos_processados.add(codigo)
+                    
+                    # Determinar hierarquia
+                    nivel = len(codigo)
+                    codigo_pai = None
+                    
+                    # Determinar código pai baseado no nível
+                    if nivel > 2:
+                        # Buscar o pai mais próximo existente
+                        for parent_len in range(nivel - 1, 1, -1):
+                            potential_parent = codigo[:parent_len]
+                            # Verificar se existe (simplificado - em produção seria consulta)
+                            if parent_len in [2, 4, 6]:  # Níveis válidos da estrutura NCM
+                                codigo_pai = potential_parent
+                                break
+                    
+                    # Criar registro NCM
+                    ncm_record = NCMHierarchy(
+                        codigo_ncm=codigo,
+                        descricao_oficial=item.get("Descricao_Completa", "").strip(),
+                        descricao_curta=item.get("Descricao_Completa", "").strip()[:200],
+                        nivel_hierarquico=nivel,
+                        codigo_pai=codigo_pai,
+                        ativo=True
+                    )
+                    
+                    session.add(ncm_record)
+                    self.stats['ncms_inseridos'] += 1
+                    batch_count += 1
+                    
+                    # Commit em lotes para performance
+                    if batch_count >= 1000:
+                        session.commit()
+                        batch_count = 0
+                        logger.info(f"  Processados {self.stats['ncms_inseridos']} NCMs...")
+                
+                except Exception as e:
+                    logger.error(f"Erro ao processar NCM {item}: {e}")
+                    self.stats['erros'] += 1
+            
+            # Commit final
+            session.commit()
+        
+        logger.info(f"✅ {self.stats['ncms_inseridos']} NCMs inseridos na hierarquia")
     
-    def _find_best_ncm_match(self, input_ncm: str) -> str:
+    def _populate_cest_categories(self):
         """
-        Encontra o melhor match de NCM considerando a hierarquia.
-        Busca do mais específico para o mais geral.
+        Popula a tabela de categorias CEST
         """
-        normalized_input = self._normalize_ncm(input_ncm)
+        logger.info("🎯 Populando categorias CEST...")
         
+        cest_data = self.data_loader.load_cest_mapping()
+        if cest_data is None or cest_data.empty:
+            logger.warning("⚠️ Nenhum dado CEST carregado")
+            return
+        
+        # Agregar CESTs únicos
+        cests_unicos = {}
+        
+        for _, item in cest_data.iterrows():
+            try:
+                cest_code = str(item.get("CEST", "")).strip()
+                if not cest_code or cest_code == 'nan':
+                    continue
+                
+                if cest_code not in cests_unicos:
+                    # Tratar valores que podem ser float/NaN
+                    descricao_raw = item.get("DESCRICAO", "") or item.get("DESCRIÇÃO", "")
+                    if pd.isna(descricao_raw):
+                        descricao = ""
+                    else:
+                        descricao = str(descricao_raw).strip()
+                    
+                    cests_unicos[cest_code] = {
+                        'codigo_cest': cest_code,
+                        'descricao_cest': descricao,
+                        'categoria_produto': self._extract_product_category(item),
+                        'ativo': True
+                    }
+            
+            except Exception as e:
+                logger.error(f"Erro ao processar CEST {item}: {e}")
+                self.stats['erros'] += 1
+        
+        # Inserir no banco
+        with self.kb_service.get_session() as session:
+            for cest_info in cests_unicos.values():
+                try:
+                    # Verificar se já existe no banco
+                    existing = session.query(CestCategory).filter_by(codigo_cest=cest_info['codigo_cest']).first()
+                    if existing:
+                        continue
+                    
+                    cest_record = CestCategory(**cest_info)
+                    session.add(cest_record)
+                    self.stats['cests_inseridos'] += 1
+                
+                except Exception as e:
+                    logger.error(f"Erro ao inserir CEST {cest_info['codigo_cest']}: {e}")
+                    self.stats['erros'] += 1
+            
+            session.commit()
+        
+        logger.info(f"✅ {self.stats['cests_inseridos']} CESTs únicos inseridos")
+    
+    def _extract_product_category(self, cest_item) -> Optional[str]:
+        """
+        Extrai categoria do produto dos dados CEST
+        """
+        # Tentar extrair categoria da descrição ou outros campos
+        descricao_raw = cest_item.get("DESCRICAO", "") or cest_item.get("DESCRIÇÃO", "")
+        if pd.isna(descricao_raw):
+            descricao = ""
+        else:
+            descricao = str(descricao_raw).strip()
+        
+        # Lógica simples para extrair categoria (pode ser melhorada)
+        descricao_lower = descricao.lower()
+        if "medicamento" in descricao_lower:
+            return "MEDICAMENTOS"
+        elif "alimento" in descricao_lower or "bebida" in descricao_lower:
+            return "ALIMENTOS_BEBIDAS"
+        elif "combustível" in descricao_lower:
+            return "COMBUSTIVEIS"
+        elif "construção" in descricao_lower or "material" in descricao_lower:
+            return "MATERIAIS_CONSTRUCAO"
+        
+        return "GERAL"
+    
+    def _create_ncm_cest_mappings(self):
+        """
+        Cria os mapeamentos NCM-CEST
+        """
+        logger.info("🔗 Criando mapeamentos NCM-CEST...")
+        
+        cest_data = self.data_loader.load_cest_mapping()
+        if cest_data is None or cest_data.empty:
+            logger.warning("⚠️ Nenhum dado CEST disponível para mapeamento")
+            return
+        
+        with self.kb_service.get_session() as session:
+            # Buscar NCMs existentes para validação
+            ncms_existentes = set(
+                row[0] for row in session.query(NCMHierarchy.codigo_ncm).filter(NCMHierarchy.ativo == True).all()
+            )
+            
+            # Buscar CESTs existentes para validação
+            cests_existentes = set(
+                row[0] for row in session.query(CestCategory.codigo_cest).filter(CestCategory.ativo == True).all()
+            )
+            
+            for _, item in cest_data.iterrows():
+                try:
+                    # Extrair códigos
+                    ncm_input = str(item.get("NCM_SH", "") or item.get("NCM/SH", "")).strip()
+                    cest_code = str(item.get("CEST", "")).strip()
+                    
+                    if not ncm_input or not cest_code:
+                        continue
+                    
+                    # Normalizar NCM
+                    ncm_normalizado = self._normalize_ncm(ncm_input)
+                    
+                    # Encontrar melhor match para NCM
+                    ncm_match = self._find_best_ncm_match(ncm_normalizado, ncms_existentes)
+                    
+                    if ncm_match and cest_code in cests_existentes:
+                        # Verificar se mapeamento já existe
+                        exists = session.query(NCMCestMapping).filter(
+                            NCMCestMapping.ncm_codigo == ncm_match,
+                            NCMCestMapping.cest_codigo == cest_code
+                        ).first()
+                        
+                        if not exists:
+                            mapping = NCMCestMapping(
+                                ncm_codigo=ncm_match,
+                                cest_codigo=cest_code,
+                                tipo_relacao='DIRETO',
+                                confianca_mapeamento=1.0,
+                                fonte_dados='CEST_RO',
+                                ativo=True
+                            )
+                            
+                            session.add(mapping)
+                            self.stats['mapeamentos_inseridos'] += 1
+                
+                except Exception as e:
+                    logger.error(f"Erro ao criar mapeamento {item}: {e}")
+                    self.stats['erros'] += 1
+            
+            session.commit()
+        
+        logger.info(f"✅ {self.stats['mapeamentos_inseridos']} mapeamentos NCM-CEST criados")
+    
+    def _find_best_ncm_match(self, ncm_input: str, ncms_existentes: set) -> Optional[str]:
+        """
+        Encontra o melhor match de NCM considerando hierarquia
+        """
         # Primeiro, tenta match exato
-        if normalized_input in self.ncm_hierarchy:
-            return normalized_input
+        if ncm_input in ncms_existentes:
+            return ncm_input
         
-        # Se não encontrar exato, busca códigos que começam com o input (mais específicos)
-        for code in self.ncm_hierarchy:
-            if code.startswith(normalized_input) and len(code) >= len(normalized_input):
-                return code
+        # Busca códigos mais específicos (que começam com o input)
+        for ncm in ncms_existentes:
+            if ncm.startswith(ncm_input) and len(ncm) >= len(ncm_input):
+                return ncm
         
-        # Se não encontrar mais específicos, busca códigos que o input começa (mais gerais)
-        for length in range(len(normalized_input) - 1, 0, -1):
-            partial_code = normalized_input[:length]
-            if partial_code in self.ncm_hierarchy:
+        # Busca códigos mais gerais (códigos pai)
+        for length in range(len(ncm_input) - 1, 1, -1):
+            partial_code = ncm_input[:length]
+            if partial_code in ncms_existentes:
                 return partial_code
         
         return None
     
-    def build_mapping_database(self) -> Dict[str, Any]:
+    def _populate_product_examples(self):
         """
-        Constrói o banco de mapeamento unificado a partir de 4 arquivos JSON:
-        
-        1. descricoes_ncm.json - Base hierárquica NCM (15.141 códigos)
-        2. CEST_RO.json - Dados oficiais CEST de Rondônia (vigentes)
-        3. Anexos_conv_92_15_corrigido.json - Dados CEST complementares
-        4. produtos_selecionados.json - Exemplos de produtos com GTIN
-        
-        UNIÃO DOS ARQUIVOS:
-        - descricoes_ncm.json → estrutura base hierárquica (Código = NCM)
-        - CEST_RO.json + Anexos_conv_92_15_corrigido.json → combinados via pd.concat 
-          (NCM/SH = NCM_SH como chave de ligação)
-        - produtos_selecionados.json → exemplos mapeados por campo 'ncm'
-        
-        Estrutura final por NCM:
-        {
-            'ncm_codigo': '22021000',
-            'descricao_oficial': 'Águas, incluindo as águas minerais...',
-            'cests_associados': [
-                {'cest': '03.002.00', 'descricao_cest': 'Refrigerantes...'}
-            ],
-            'gtins_exemplos': [
-                {
-                    'gtin': '7891000100100', 
-                    'descricao_produto': 'Coca-Cola 350ml',
-                    'ncm_original': '22021000'
-                }
-            ]
-        }
+        Popula produtos exemplo
         """
-        print("🔨 Iniciando construção do banco de mapeamento...")
+        logger.info("🛍️ Populando produtos exemplo...")
         
-        mapping_db = {}
-        
-        # ========================================================================
-        # 1. CARREGAR BASE NCM COM HIERARQUIA
-        # ========================================================================
-        print("📋 Carregando descrições NCM...")
-        ncm_data = self.data_loader.load_ncm_descriptions()
-        if ncm_data:
-            # Construir hierarquia de NCMs
-            self._build_ncm_hierarchy(ncm_data)
-            
-            # Criar entradas na base de mapeamento para todos os códigos
-            for code, data in self.ncm_hierarchy.items():
-                mapping_db[code] = {
-                    "ncm_codigo": code,
-                    "codigo_original": data["codigo_original"],
-                    "descricao_oficial": data["descricao_completa"],
-                    "nivel_hierarquico": data["nivel"],
-                    "cests_associados": [],
-                    "gtins_exemplos": []
-                }
-        print(f"✅ {len(mapping_db)} NCMs carregados com hierarquia.")
-
-        # ========================================================================
-        # 2. MAPEAMENTO CEST COM HIERARQUIA
-        # ========================================================================
-        print("🔗 Mapeando dados CEST...")
-        cest_data = self.data_loader.load_cest_mapping()
-        if cest_data is not None and not cest_data.empty:
-            print(f"📊 {len(cest_data)} registros CEST encontrados.")
-            cest_count = 0
-            cest_matched = 0
-            
-            for _, item in cest_data.iterrows():
-                # Primeiro tenta NCM_SH, depois NCM/SH (para CEST_RO.json)
-                ncm_input = str(item.get("NCM_SH", "") or item.get("NCM/SH", "")).strip()
-                # Encontrar o melhor match considerando hierarquia
-                best_match = self._find_best_ncm_match(ncm_input)
-                
-                if best_match and best_match in mapping_db:
-                    cest_info = {
-                        "cest": item.get("CEST", "").strip(),
-                        "descricao_cest": (item.get("DESCRICAO", "") or item.get("DESCRIÇÃO", "")).strip(),
-                        "ncm_original": ncm_input,
-                        # Informações adicionais do CEST_RO.json (se disponíveis)
-                        "tabela": item.get("TABELA", "").strip() if pd.notna(item.get("TABELA", "")) else None,
-                        "anexo": item.get("ANEXO", "").strip() if pd.notna(item.get("ANEXO", "")) else None,
-                        "situacao": item.get("Situação", "").strip() if pd.notna(item.get("Situação", "")) else None,
-                        "inicio_vigencia": item.get("Início vig.", "").strip() if pd.notna(item.get("Início vig.", "")) else None
-                    }
-                    
-                    # Remover campos None para manter estrutura limpa
-                    cest_info = {k: v for k, v in cest_info.items() if v is not None}
-                    
-                    if cest_info not in mapping_db[best_match]["cests_associados"]:
-                        mapping_db[best_match]["cests_associados"].append(cest_info)
-                        cest_count += 1
-                    cest_matched += 1
-                    
-            print(f"✅ {cest_matched}/{len(cest_data)} registros CEST mapeados.")
-            print(f"✅ {cest_count} associações CEST adicionadas.")
-        else:
-            print("⚠️ Nenhum dado CEST carregado.")
-        print("✅ Mapeamento CEST concluído.")
-        
-        # ========================================================================
-        # 2.5. HERANÇA HIERÁRQUICA DE CESTs
-        # ========================================================================
-        print("🌳 Aplicando herança hierárquica de CESTs...")
-        inherited_count = self._apply_cest_inheritance(mapping_db)
-        print(f"✅ {inherited_count} NCMs receberam CESTs por herança hierárquica.")
-        
-        # ========================================================================
-        # 3. MAPEAMENTO DE PRODUTOS SELECIONADOS (JSON) COM HIERARQUIA
-        # ========================================================================
-        print("🛍️  Mapeando produtos selecionados...")
         product_data = self.data_loader.load_produtos_selecionados()
-        if product_data is not None and not product_data.empty:
-            products_matched = 0
-            products_added = 0
+        if product_data is None or product_data.empty:
+            logger.warning("⚠️ Nenhum produto exemplo carregado")
+            return
+        
+        with self.kb_service.get_session() as session:
+            # Buscar NCMs existentes
+            ncms_existentes = set(
+                row[0] for row in session.query(NCMHierarchy.codigo_ncm).filter(NCMHierarchy.ativo == True).all()
+            )
             
             for _, item in product_data.iterrows():
-                # Usar 'ncm' do produtos_selecionados.json (equivale a NCM/SH = NCM_SH)
-                ncm_input = str(item.get("ncm", "")).strip()
-                # Encontrar o melhor match considerando hierarquia
-                best_match = self._find_best_ncm_match(ncm_input)
+                try:
+                    ncm_input = str(item.get("ncm", "")).strip()
+                    gtin = str(item.get("gtin", "")).strip()
+                    
+                    if not ncm_input or not gtin:
+                        continue
+                    
+                    # Normalizar e encontrar NCM
+                    ncm_normalizado = self._normalize_ncm(ncm_input)
+                    ncm_match = self._find_best_ncm_match(ncm_normalizado, ncms_existentes)
+                    
+                    if ncm_match:
+                        # Verificar se produto já existe
+                        exists = session.query(ProdutoExemplo).filter(
+                            ProdutoExemplo.gtin == gtin
+                        ).first()
+                        
+                        if not exists:
+                            produto = ProdutoExemplo(
+                                ncm_codigo=ncm_match,
+                                gtin=gtin,
+                                descricao_produto=item.get("descricao", "").strip(),
+                                fonte_dados='PRODUTOS_SELECIONADOS',
+                                qualidade_classificacao=0.8,
+                                ativo=True
+                            )
+                            
+                            session.add(produto)
+                            self.stats['exemplos_inseridos'] += 1
                 
-                if best_match and best_match in mapping_db:
-                    gtin_info = {
-                        "gtin": str(item.get("gtin", "")).strip(),
-                        "descricao_produto": item.get("descricao", "").strip(),
-                        "ncm_original": ncm_input,
-                        "cest_original": str(item.get("cest", "")).strip() if item.get("cest") else None
-                    }
-                    
-                    # Remover campos None para manter estrutura limpa
-                    gtin_info = {k: v for k, v in gtin_info.items() if v is not None and v != ""}
-                    
-                    # Limitar o número de exemplos para não sobrecarregar
-                    if len(mapping_db[best_match]["gtins_exemplos"]) < self.config.MAX_GTIN_EXAMPLES:
-                        mapping_db[best_match]["gtins_exemplos"].append(gtin_info)
-                        products_added += 1
-                    products_matched += 1
+                except Exception as e:
+                    logger.error(f"Erro ao inserir produto {item}: {e}")
+                    self.stats['erros'] += 1
             
-            print(f"✅ {products_matched}/{len(product_data)} produtos selecionados mapeados.")
-            print(f"✅ {products_added} exemplos de produtos adicionados.")
-        else:
-            print("⚠️ Nenhum produto selecionado carregado.")
-        print("✅ Mapeamento de produtos selecionados concluído.")
+            session.commit()
         
-        # ========================================================================
-        # 4. SALVAR A BASE DE CONHECIMENTO
-        # ========================================================================
-        print(f"💾 Salvando base de conhecimento em {self.config.NCM_MAPPING_FILE}...")
-        try:
-            with open(self.config.NCM_MAPPING_FILE, 'w', encoding='utf-8') as f:
-                json.dump(list(mapping_db.values()), f, ensure_ascii=False, indent=4)
-            
-            # ========================================================================
-            # 5. ESTATÍSTICAS FINAIS
-            # ========================================================================
-            self._print_final_statistics(mapping_db)
-            
-            print("🎉 Base de conhecimento construída com sucesso!")
-        except IOError as e:
-            print(f"❌ Erro ao salvar o arquivo: {e}")
-            return {}
-        
-        return mapping_db
+        logger.info(f"✅ {self.stats['exemplos_inseridos']} produtos exemplo inseridos")
     
-    def _apply_cest_inheritance(self, mapping_db):
+    def _apply_cest_inheritance(self):
         """
-        Aplica herança hierárquica de CESTs.
-        NCMs filhos sem CEST próprio herdam os CESTs do NCM pai mais específico.
+        Aplica herança hierárquica de CESTs
         """
-        inherited_count = 0
+        logger.info("🌳 Aplicando herança hierárquica de CESTs...")
         
-        # Criar um dicionário para acesso rápido por código NCM
-        ncm_dict = {data['ncm_codigo']: data for data in mapping_db.values()}
-        
-        # Processar todos os NCMs em ordem de comprimento (mais específicos primeiro)
-        ncm_codes = sorted(ncm_dict.keys(), key=len, reverse=True)
-        
-        for ncm_code in ncm_codes:
-            ncm_data = ncm_dict[ncm_code]
+        with self.kb_service.get_session() as session:
+            # Buscar NCMs sem CESTs próprios
+            ncms_sem_cest = session.query(NCMHierarchy).filter(
+                and_(
+                    NCMHierarchy.ativo == True,
+                    ~NCMHierarchy.codigo_ncm.in_(
+                        session.query(NCMCestMapping.ncm_codigo).filter(NCMCestMapping.ativo == True)
+                    )
+                )
+            ).order_by(NCMHierarchy.nivel_hierarquico.desc()).all()
             
-            # Se já tem CESTs próprios, pular
-            if ncm_data.get('cests_associados'):
-                continue
+            inherited_count = 0
             
-            # Buscar CEST do NCM pai mais específico
-            parent_cests = self._find_parent_cests(ncm_code, ncm_dict)
+            for ncm in ncms_sem_cest:
+                # Buscar CESTs do pai mais próximo
+                parent_cests = self._find_parent_cests(ncm.codigo_ncm, session)
+                
+                if parent_cests:
+                    for parent_cest in parent_cests:
+                        # Criar mapeamento herdado
+                        inherited_mapping = NCMCestMapping(
+                            ncm_codigo=ncm.codigo_ncm,
+                            cest_codigo=parent_cest['cest_codigo'],
+                            tipo_relacao='HERDADO',
+                            confianca_mapeamento=parent_cest['confianca'] * 0.8,  # Reduz confiança
+                            fonte_dados=f"HERANCA_{parent_cest['fonte']}",
+                            ativo=True
+                        )
+                        
+                        session.add(inherited_mapping)
+                    
+                    inherited_count += 1
+            
+            session.commit()
+        
+        logger.info(f"✅ {inherited_count} NCMs receberam CESTs por herança")
+    
+    def _find_parent_cests(self, ncm_code: str, session) -> list:
+        """
+        Encontra CESTs do NCM pai mais próximo
+        """
+        for length in range(len(ncm_code) - 1, 1, -1):
+            parent_code = ncm_code[:length]
+            
+            parent_cests = session.query(
+                NCMCestMapping.cest_codigo,
+                NCMCestMapping.confianca_mapeamento,
+                NCMCestMapping.fonte_dados
+            ).filter(
+                and_(
+                    NCMCestMapping.ncm_codigo == parent_code,
+                    NCMCestMapping.ativo == True,
+                    NCMCestMapping.tipo_relacao == 'DIRETO'  # Só herdar de mapeamentos diretos
+                )
+            ).all()
             
             if parent_cests:
-                # Herdar CESTs do pai, marcando como herdados
-                inherited_cests = []
-                for cest in parent_cests:
-                    inherited_cest = cest.copy()
-                    inherited_cest['herdado'] = True
-                    inherited_cest['herdado_de'] = self._find_parent_with_cests(ncm_code, ncm_dict)
-                    inherited_cests.append(inherited_cest)
-                
-                ncm_data['cests_associados'] = inherited_cests
-                inherited_count += 1
+                return [
+                    {
+                        'cest_codigo': cest.cest_codigo,
+                        'confianca': cest.confianca_mapeamento,
+                        'fonte': cest.fonte_dados
+                    }
+                    for cest in parent_cests
+                ]
         
-        return inherited_count
-    
-    def _find_parent_cests(self, ncm_code, ncm_dict):
-        """Encontra CESTs do NCM pai mais específico."""
-        # Tentar códigos pais de tamanho decrescente
-        for length in range(len(ncm_code) - 1, 0, -1):
-            parent_code = ncm_code[:length]
-            if parent_code in ncm_dict:
-                parent_cests = ncm_dict[parent_code].get('cests_associados', [])
-                # Só considerar CESTs próprios (não herdados) para evitar cadeia infinita
-                own_cests = [c for c in parent_cests if not c.get('herdado', False)]
-                if own_cests:
-                    return own_cests
         return []
     
-    def _find_parent_with_cests(self, ncm_code, ncm_dict):
-        """Encontra o código do NCM pai que forneceu os CESTs."""
-        for length in range(len(ncm_code) - 1, 0, -1):
-            parent_code = ncm_code[:length]
-            if parent_code in ncm_dict:
-                parent_cests = ncm_dict[parent_code].get('cests_associados', [])
-                own_cests = [c for c in parent_cests if not c.get('herdado', False)]
-                if own_cests:
-                    return parent_code
-        return None
-    
-    def _print_final_statistics(self, mapping_db):
-        """Imprime estatísticas finais da base construída."""
-        print("\n📊 ESTATÍSTICAS FINAIS DA BASE DE CONHECIMENTO:")
-        print("=" * 60)
+    def _create_metadata(self):
+        """
+        Cria registros de metadados da base
+        """
+        logger.info("📊 Criando metadados da base...")
         
-        total_ncms = len(mapping_db)
-        ncms_with_description = sum(1 for data in mapping_db.values() if data.get('descricao_oficial'))
-        ncms_with_cest = sum(1 for data in mapping_db.values() if data.get('cests_associados'))
-        ncms_with_examples = sum(1 for data in mapping_db.values() if data.get('gtins_exemplos'))
-        
-        # Separar CESTs próprios e herdados
-        ncms_with_own_cest = 0
-        ncms_with_inherited_cest = 0
-        total_own_cests = 0
-        total_inherited_cests = 0
-        
-        for data in mapping_db.values():
-            cests = data.get('cests_associados', [])
-            if cests:
-                own_cests = [c for c in cests if not c.get('herdado', False)]
-                inherited_cests = [c for c in cests if c.get('herdado', False)]
-                
-                if own_cests:
-                    ncms_with_own_cest += 1
-                    total_own_cests += len(own_cests)
-                if inherited_cests:
-                    ncms_with_inherited_cest += 1
-                    total_inherited_cests += len(inherited_cests)
-        
-        total_cests = total_own_cests + total_inherited_cests
-        total_examples = sum(len(data.get('gtins_exemplos', [])) for data in mapping_db.values())
-        
-        print(f"📋 Total de NCMs: {total_ncms:,}")
-        print(f"📝 NCMs com descrição oficial: {ncms_with_description:,} ({ncms_with_description/total_ncms*100:.1f}%)")
-        print(f"🎯 NCMs com CEST (total): {ncms_with_cest:,} ({ncms_with_cest/total_ncms*100:.1f}%)")
-        print(f"   ├─ NCMs com CEST próprio: {ncms_with_own_cest:,}")
-        print(f"   └─ NCMs com CEST herdado: {ncms_with_inherited_cest:,}")
-        print(f"🛍️ NCMs com exemplos de produtos: {ncms_with_examples:,} ({ncms_with_examples/total_ncms*100:.1f}%)")
-        print(f"📊 Total de associações CEST: {total_cests:,}")
-        print(f"   ├─ CESTs próprios: {total_own_cests:,}")
-        print(f"   └─ CESTs herdados: {total_inherited_cests:,}")
-        print(f"📦 Total de exemplos de produtos: {total_examples:,}")
-        print("=" * 60)
+        with self.kb_service.get_session() as session:
+            metadata = KnowledgeBaseMetadata(
+                versao_base="1.0.0",
+                total_ncms=self.stats['ncms_inseridos'],
+                total_cests=self.stats['cests_inseridos'],
+                total_mapeamentos=self.stats['mapeamentos_inseridos'],
+                total_exemplos=self.stats['exemplos_inseridos'],
+                fontes_utilizadas=json.dumps([
+                    "descricoes_ncm.json",
+                    "CEST_RO.json", 
+                    "Anexos_conv_92_15_corrigido.json",
+                    "produtos_selecionados.json"
+                ]),
+                ativo=True
+            )
             
-        return mapping_db
+            session.add(metadata)
+            session.commit()
+        
+        logger.info("✅ Metadados criados")
+    
+    def _verify_integrity(self):
+        """
+        Verifica integridade da base construída
+        """
+        logger.info("🔍 Verificando integridade da base...")
+        
+        integrity_check = self.kb_service.verificar_integridade()
+        
+        if integrity_check['integridade_ok']:
+            logger.info("✅ Integridade verificada com sucesso")
+        else:
+            logger.warning("⚠️ Problemas de integridade encontrados:")
+            for problema in integrity_check['problemas']:
+                logger.warning(f"  - {problema}")
+    
+    def _print_final_statistics(self):
+        """
+        Imprime estatísticas finais
+        """
+        logger.info("\n📊 ESTATÍSTICAS FINAIS DA BASE SQLITE:")
+        logger.info("=" * 60)
+        
+        # Obter estatísticas do serviço
+        stats = self.kb_service.obter_estatisticas()
+        
+        logger.info(f"📋 Total de NCMs: {stats['total_ncms']:,}")
+        logger.info(f"🎯 Total de CESTs: {stats['total_cests']:,}")
+        logger.info(f"🔗 Total de mapeamentos: {stats['total_mapeamentos']:,}")
+        logger.info(f"📦 Total de exemplos: {stats['total_exemplos']:,}")
+        
+        if 'ncms_por_nivel' in stats:
+            logger.info("📈 NCMs por nível hierárquico:")
+            for nivel, qtd in stats['ncms_por_nivel'].items():
+                logger.info(f"   Nível {nivel}: {qtd:,} NCMs")
+        
+        logger.info(f"❌ Erros durante construção: {self.stats['erros']}")
+        logger.info("=" * 60)
 
 
 if __name__ == "__main__":
-    builder = KnowledgeBaseBuilder()
-    builder.build_mapping_database()
+    builder = SQLiteKnowledgeBaseBuilder()
+    success = builder.build_sqlite_knowledge_base()
+    
+    if success:
+        logger.info("🎉 Migração para SQLite concluída com sucesso!")
+        logger.info("💡 O arquivo ncm_mapping.json não é mais necessário")
+        logger.info("🔄 Atualize o HybridRouter para usar KnowledgeBaseService")
+    else:
+        logger.error("❌ Falha na migração para SQLite")
+        sys.exit(1)

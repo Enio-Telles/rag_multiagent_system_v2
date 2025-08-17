@@ -1,0 +1,4 @@
+produto_id,descricao_produto,codigo_produto,classificacao_id,ncm_classificado,cest_classificado,confianca_consolidada,justificativa,tempo_processamento_ms,sistema
+5807,ZYXEM 5MG/ML FR 20ML GTS (ABT),000000000004009405,305,30049099,13.001.00,0.95,Classificação automática baseada em análise de texto: ZYXEM 5MG/ML FR 20ML GTS (ABT)...,20,unified_sqlite
+13818,ZYXEM 5MG CX 10CP (ABT),000000000004009383,306,30049099,13.001.00,0.95,Classificação automática baseada em análise de texto: ZYXEM 5MG CX 10CP (ABT)...,3,unified_sqlite
+8226,ZYXEM 5MG C 10 COMP,000000000004009383,307,30049099,13.001.00,0.95,Classificação automática baseada em análise de texto: ZYXEM 5MG C 10 COMP...,0,unified_sqlite

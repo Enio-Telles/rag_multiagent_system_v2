@@ -1,0 +1,23 @@
+{
+  "sqlite_performance": {
+    "ncm_search_time": 0.018000364303588867,
+    "cest_search_time": 0.0020067691802978516,
+    "complex_query_time": 0.0019927024841308594,
+    "stats_time": 0.008001327514648438,
+    "total_time": 0.030001163482666016,
+    "operations_per_second": 133.32816249980132
+  },
+  "json_simulation": {
+    "load_time": 0.18107128143310547,
+    "search_time": 0.016,
+    "complex_time": 0.05,
+    "total_time": 0.24707128143310547
+  },
+  "comparison": {
+    "improvement_factor": 8.235389989986809,
+    "improvement_percent": 87.85728421828385,
+    "sqlite_ops_per_sec": 133.32816249980132,
+    "json_ops_per_sec": 16.189659829335525
+  },
+  "timestamp": 1755371357.9425821
+}

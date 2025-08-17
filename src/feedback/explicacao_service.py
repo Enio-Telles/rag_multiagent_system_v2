@@ -15,6 +15,46 @@ from database.connection import get_db
 
 logger = logging.getLogger(__name__)
 
+def clean_circular_references(obj, max_depth=5, current_depth=0):
+    """
+    Remove referências circulares de objetos Python para serialização JSON
+    """
+    if current_depth > max_depth:
+        return f"<MAX_DEPTH_REACHED_{max_depth}>"
+    
+    if obj is None:
+        return None
+    
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+    
+    if isinstance(obj, dict):
+        cleaned = {}
+        for k, v in obj.items():
+            try:
+                if isinstance(v, (dict, list)):
+                    cleaned[k] = clean_circular_references(v, max_depth, current_depth + 1)
+                else:
+                    cleaned[k] = v
+            except:
+                cleaned[k] = f"<SERIALIZATION_ERROR>"
+        return cleaned
+    
+    if isinstance(obj, list):
+        cleaned = []
+        for item in obj:
+            try:
+                cleaned.append(clean_circular_references(item, max_depth, current_depth + 1))
+            except:
+                cleaned.append(f"<SERIALIZATION_ERROR>")
+        return cleaned
+    
+    # Para outros tipos, tentar converter para string
+    try:
+        return str(obj)
+    except:
+        return f"<OBJECT_TYPE_{type(obj).__name__}>"
+
 class ExplicacaoService:
     """Serviço para gerenciar explicações dos agentes"""
     
@@ -44,17 +84,22 @@ class ExplicacaoService:
         try:
             db = next(get_db())
             
+            # Limpar referências circulares dos campos JSON
+            contexto_utilizado = clean_circular_references(explicacao_data.get("contexto_utilizado"))
+            etapas_processamento = clean_circular_references(explicacao_data.get("etapas_processamento"))
+            resultado_agente = clean_circular_references(explicacao_data.get("resultado_agente"))
+            
             explicacao = ExplicacaoAgente(
                 produto_id=produto_id,
                 classificacao_id=classificacao_id,
                 agente_nome=explicacao_data.get("agente_nome"),
                 agente_versao=explicacao_data.get("agente_versao", "1.0"),
-                input_original=explicacao_data.get("input_original"),
-                contexto_utilizado=explicacao_data.get("contexto_utilizado"),
-                etapas_processamento=explicacao_data.get("etapas_processamento"),
-                resultado_agente=explicacao_data.get("resultado_agente"),
-                explicacao_detalhada=explicacao_data.get("explicacao_detalhada"),
-                justificativa_tecnica=explicacao_data.get("justificativa_tecnica"),
+                input_original=str(explicacao_data.get("input_original", ""))[:1000],  # Limitar tamanho
+                contexto_utilizado=contexto_utilizado,
+                etapas_processamento=etapas_processamento,
+                resultado_agente=resultado_agente,
+                explicacao_detalhada=str(explicacao_data.get("explicacao_detalhada", ""))[:5000],  # Limitar tamanho
+                justificativa_tecnica=str(explicacao_data.get("justificativa_tecnica", ""))[:2000],
                 nivel_confianca=explicacao_data.get("nivel_confianca"),
                 tempo_processamento_ms=explicacao_data.get("tempo_processamento_ms"),
                 tokens_llm_utilizados=explicacao_data.get("tokens_utilizados"),

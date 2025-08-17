@@ -20,11 +20,12 @@ class DataLoader:
         print(f"🔗 Conectando ao banco: {database_url.split('://')[0]}...")
         return create_engine(database_url)
     
-    def load_produtos_from_db(self, force_postgresql: bool = False) -> pd.DataFrame:
+    def load_produtos_from_db(self, force_postgresql: bool = False, limit: int = None) -> pd.DataFrame:
         """Carrega produtos da base de dados usando a lógica do extracao_dados.py.
         
         Args:
             force_postgresql: Se True, força conexão direta ao PostgreSQL ignorando fallback
+            limit: Número máximo de produtos a carregar (None = todos)
         """
         
         # Determinar se estamos usando SQLite ou PostgreSQL
@@ -52,7 +53,8 @@ class DataLoader:
             print("🔄 Verificando dados no SQLite...")
             try:
                 # Tentar carregar da tabela de classificações se existir
-                query = """
+                limit_clause = f"LIMIT {limit}" if limit else "LIMIT 100"
+                query = f"""
                 SELECT 
                     id as produto_id,
                     descricao_produto,
@@ -61,7 +63,7 @@ class DataLoader:
                     ncm_original,
                     cest_original
                 FROM classificacao_revisao
-                LIMIT 100
+                {limit_clause}
                 """
                 df = pd.read_sql_query(query, self.engine)
                 if len(df) > 0:
@@ -72,30 +74,74 @@ class DataLoader:
             
             # Fallback: criar dados de exemplo
             print("🔄 Criando dados de exemplo para teste...")
-            return self._create_sample_data()
+            return self._create_sample_data(limit)
         else:
-            # PostgreSQL original
+            # PostgreSQL original - query robusta apenas com campos essenciais
+            limit_clause = f"LIMIT {limit}" if limit else ""
             query = f"""
             SELECT 
-            produto_id,
-            descricao_produto,
-            codigo_produto,
-            codigo_barra,
-            ncm,
-            cest,
-            DENSE_RANK() OVER (ORDER BY descricao_produto) AS id_agregados,
-            COUNT(*) OVER (PARTITION BY descricao_produto) AS qtd_mesma_desc
-        FROM {self.config.DB_CONFIG['schema']}.produto
-        ORDER BY id_agregados DESC
+                produto_id,
+                descricao_produto,
+                codigo_produto,
+                codigo_barra,
+                ncm,
+                cest,
+                DENSE_RANK() OVER (ORDER BY descricao_produto) AS id_agregados,
+                COUNT(*) OVER (PARTITION BY descricao_produto) AS qtd_mesma_desc
+            FROM {self.config.DB_CONFIG['schema']}.produto
+            WHERE descricao_produto IS NOT NULL 
+            AND LENGTH(TRIM(descricao_produto)) > 5
+            ORDER BY 
+                CASE WHEN codigo_barra IS NOT NULL AND LENGTH(codigo_barra) > 8 THEN 1 ELSE 2 END,
+                id_agregados DESC
+            {limit_clause}
             """
             
-            print("🔄 Carregando produtos da base de dados PostgreSQL...")
-            df = pd.read_sql_query(query, self.engine)
-            print(f"✅ {len(df)} produtos carregados.")
-            return df
+            print("🔄 Carregando produtos da base PostgreSQL com query otimizada...")
+            try:
+                df = pd.read_sql_query(query, self.engine)
+                print(f"✅ {len(df)} produtos carregados do PostgreSQL.")
+                
+                # Adicionar informações de debug
+                produtos_com_gtin = df[df['codigo_barra'].notna() & (df['codigo_barra'] != '')].shape[0]
+                produtos_com_ncm = df[df['ncm'].notna() & (df['ncm'] != '')].shape[0]
+                produtos_com_cest = df[df['cest'].notna() & (df['cest'] != '')].shape[0]
+                
+                print(f"   📊 Produtos com GTIN: {produtos_com_gtin:,}")
+                print(f"   📊 Produtos com NCM: {produtos_com_ncm:,}")
+                print(f"   📊 Produtos com CEST: {produtos_com_cest:,}")
+                
+                return df
+                
+            except Exception as e:
+                print(f"❌ Erro ao carregar dados do PostgreSQL: {e}")
+                print("   Tentando query alternativa...")
+                
+                # Query alternativa mais simples
+                query_simple = f"""
+                SELECT 
+                    produto_id,
+                    descricao_produto,
+                    COALESCE(codigo_produto, '') as codigo_produto,
+                    COALESCE(codigo_barra, '') as codigo_barra,
+                    COALESCE(ncm, '') as ncm,
+                    COALESCE(cest, '') as cest
+                FROM {self.config.DB_CONFIG['schema']}.produto
+                WHERE descricao_produto IS NOT NULL 
+                LIMIT 1000
+                """
+                
+                try:
+                    df = pd.read_sql_query(query_simple, self.engine)
+                    print(f"✅ {len(df)} produtos carregados com query simplificada.")
+                    return df
+                except Exception as e2:
+                    print(f"❌ Erro também na query simplificada: {e2}")
+                    print("🔄 Usando dados de exemplo...")
+                    return self._create_sample_data()
         return df
     
-    def _create_sample_data(self) -> pd.DataFrame:
+    def _create_sample_data(self, limit: int = None) -> pd.DataFrame:
         """Cria dados de exemplo para teste quando não há banco disponível."""
         sample_data = [
             {
@@ -295,6 +341,47 @@ class DataLoader:
             print(f"⚠️ Arquivo NESH não encontrado: {nesh_file}")
             return None
         
-        # TODO: Implementar extração de texto do PDF
-        # Por enquanto, retorna placeholder
-        return "Conteúdo da NESH seria extraído aqui..."
+        try:
+            # Tentar importar PyPDF2 para extração de texto
+            try:
+                import PyPDF2
+                
+                print(f"📁 Extraindo texto de: {nesh_file.name}")
+                with open(nesh_file, 'rb') as file:
+                    pdf_reader = PyPDF2.PdfReader(file)
+                    text_content = ""
+                    
+                    # Extrair texto de todas as páginas (limitado a 50 páginas para performance)
+                    max_pages = min(50, len(pdf_reader.pages))
+                    for page_num in range(max_pages):
+                        page = pdf_reader.pages[page_num]
+                        text_content += page.extract_text() + "\n"
+                    
+                    print(f"✅ Texto extraído de {max_pages} páginas da NESH")
+                    return text_content
+                    
+            except ImportError:
+                print("⚠️ PyPDF2 não instalado. Para extrair texto de PDF, instale: pip install PyPDF2")
+                # Fallback: retornar informações básicas sobre NESH
+                return self._get_nesh_fallback_content()
+                
+        except Exception as e:
+            print(f"⚠️ Erro ao extrair texto da NESH: {e}")
+            return self._get_nesh_fallback_content()
+    
+    def _get_nesh_fallback_content(self) -> str:
+        """Retorna conteúdo básico sobre NESH quando não é possível extrair do PDF."""
+        return """
+        NESH - Nomenclatura Específica do Sistema Harmonizado
+        
+        A NESH é um sistema de classificação de mercadorias baseado no Sistema Harmonizado (SH)
+        e é utilizada para fins de comércio exterior no Brasil.
+        
+        Principais características:
+        - Baseada no Sistema Harmonizado internacional
+        - Utilizada para classificação de produtos para importação/exportação
+        - Relacionada com a NCM (Nomenclatura Comum do Mercosul)
+        - Importante para determinação de tributos e regulamentações
+        
+        Para análise completa, é recomendado consultar o documento oficial da NESH.
+        """

@@ -57,11 +57,11 @@ class OllamaClient:
         except requests.exceptions.RequestException as e:
             return {"error": f"Erro na comunicação com Ollama: {e}"}
 
-print("✅ Sistema de Classificação Fiscal Agêntico - 100% OPERACIONAL!")
-print("🎯 Status Atual:")
-print("✅ Base de conhecimento: 15.141 NCMs + 1.174 CESTs carregados")
-print("✅ Sistema RAG: 101.115 chunks indexados, busca semântica sub-segundo")
-print("✅ Agentes especializados: 5 agentes funcionais (Expansion, Aggregation, NCM, CEST, Reconciler)")
-print("✅ Interface web: API completa com documentação automática")
-print("✅ Golden Set: Sistema de aprendizagem contínua ativo")
-print("🚀 Sistema pronto para classificação em produção!")
+print("Sistema de Classificacao Fiscal Agentico - 100% OPERACIONAL!")
+print("Status Atual:")
+print("Base de conhecimento: 15.141 NCMs + 1.174 CESTs carregados")
+print("Sistema RAG: 101.115 chunks indexados, busca semantica sub-segundo")
+print("Agentes especializados: 5 agentes funcionais (Expansion, Aggregation, NCM, CEST, Reconciler)")
+print("Interface web: API completa com documentacao automatica")
+print("Golden Set: Sistema de aprendizagem continua ativo")
+print("Sistema pronto para classificacao em producao!")

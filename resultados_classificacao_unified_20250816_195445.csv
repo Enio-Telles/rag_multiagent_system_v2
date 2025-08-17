@@ -1,0 +1,2 @@
+produto_id,descricao_produto,codigo_produto,codigo_barra,ncm_original,cest_original,classificacao_id,ncm_classificado,cest_classificado,confianca_consolidada,justificativa,consultas_agentes,tempo_processamento_ms,sistema
+5807,ZYXEM 5MG/ML FR 20ML GTS (ABT),000000000004009405,5413787037797,30049069,1300401,914,30049099,13.001.00,0.98,Produto analisado: ZYXEM 5MG/ML FR 20ML GTS (ABT). NCM identificado: 30049099. CEST atribuído: 13.001.00. Consultas realizadas: 3. Produto farmacêutico detectado - usado sistema ABC Farma,3,88,unified_sqlite_complete

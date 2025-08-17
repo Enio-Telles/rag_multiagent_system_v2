@@ -250,3 +250,91 @@ class ExplicacaoAgente(Base):
     
     def __repr__(self):
         return f"<ExplicacaoAgente(agente='{self.agente_nome}', produto_id={self.produto_id})>"
+
+
+class InformacaoEmpresa(Base):
+    """
+    Tabela para armazenar informações sobre a atividade da empresa
+    que são usadas como contexto para os agentes de classificação
+    """
+    __tablename__ = "informacoes_empresa"
+    
+    # Chave primária
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Identificação da empresa
+    empresa_id = Column(String(50), nullable=False, unique=True, index=True)  # CNPJ ou ID único
+    razao_social = Column(String(200))
+    nome_fantasia = Column(String(200))
+    
+    # Atividade principal
+    cnae_principal = Column(String(20))  # CNAE principal da empresa
+    cnae_secundarios = Column(JsonType)  # CNAEs secundários
+    atividade_descricao = Column(Text, nullable=False)  # Descrição da atividade
+    
+    # Informações relevantes para CEST
+    modalidade_venda = Column(String(50))  # porta_a_porta, varejo, atacado, online, etc.
+    tipo_estabelecimento = Column(String(50))  # loja_fisica, comercio_eletronico, deposito, etc.
+    regime_tributario = Column(String(30))  # simples_nacional, lucro_presumido, lucro_real
+    
+    # Contexto específico para classificação
+    segmento_cest_aplicavel = Column(String(10))  # Segmento CEST principal (ex: 28 para porta a porta)
+    observacoes_classificacao = Column(Text)  # Observações específicas para os agentes
+    
+    # Produtos típicos comercializados
+    categorias_produtos = Column(JsonType)  # Categorias principais de produtos
+    exemplos_produtos = Column(JsonType)  # Exemplos de produtos comercializados
+    
+    # Informações geográficas
+    estados_atuacao = Column(JsonType)  # Estados onde atua
+    abrangencia = Column(String(20))  # local, regional, nacional, internacional
+    
+    # Configurações de classificação
+    contexto_agentes = Column(JsonType)  # Contexto específico para cada agente
+    preferencias_classificacao = Column(JsonType)  # Preferências e regras específicas
+    
+    # Status e validade
+    ativo = Column(Boolean, default=True)
+    data_cadastro = Column(DateTime, default=func.now())
+    data_atualizacao = Column(DateTime, default=func.now(), onupdate=func.now())
+    cadastrado_por = Column(String(100))  # Usuário que cadastrou
+    
+    def __repr__(self):
+        return f"<InformacaoEmpresa(empresa_id='{self.empresa_id}', razao_social='{self.razao_social}')>"
+
+
+class ContextoClassificacao(Base):
+    """
+    Tabela para armazenar contexto específico usado em cada classificação
+    Link entre as informações da empresa e a classificação do produto
+    """
+    __tablename__ = "contexto_classificacao"
+    
+    # Chave primária
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Referências
+    produto_id = Column(Integer, nullable=False, index=True)
+    classificacao_id = Column(Integer, index=True)  # FK para ClassificacaoRevisao
+    empresa_id = Column(String(50), nullable=False, index=True)  # FK para InformacaoEmpresa
+    
+    # Contexto aplicado
+    contexto_geral = Column(JsonType)  # Contexto geral da empresa aplicado
+    contexto_especifico = Column(JsonType)  # Contexto específico para este produto
+    
+    # Informações relevantes utilizadas
+    modalidade_venda_aplicada = Column(String(50))  # Modalidade considerada
+    segmento_cest_considerado = Column(String(10))  # Segmento CEST considerado
+    observacoes_contexto = Column(Text)  # Observações sobre o contexto utilizado
+    
+    # Impacto do contexto
+    contexto_influenciou_ncm = Column(Boolean, default=False)
+    contexto_influenciou_cest = Column(Boolean, default=False)
+    justificativa_influencia = Column(Text)  # Como o contexto influenciou a classificação
+    
+    # Auditoria
+    data_aplicacao = Column(DateTime, default=func.now())
+    sessao_classificacao = Column(String(100))  # ID da sessão
+    
+    def __repr__(self):
+        return f"<ContextoClassificacao(produto_id={self.produto_id}, empresa_id='{self.empresa_id}')>"
