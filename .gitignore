@@ -1,28 +1,8 @@
-# Ignorar pasta do ambiente virtual Python
-venv/
-env/
-.venv/
-.env/
-documentacao/
-*.md
-cleanup_backup
-*.json
-# Compiled source #
-###################
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
-*.pyc
-*.pyo
-*.pyd
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
+*.so
 .Python
 build/
 develop-eggs/
@@ -36,106 +16,38 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
+# Virtual environments
 venv/
+env/
+.venv/
+.env/
 ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# Environment variables (MANTER .env.example)
+.env
+.env.local
+.env.production
+.env.development
+secrets.json
+credentials.json
 
-# Rope project settings
-.ropeproject
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-workspace
+.sublime-project
 
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Packages #
-############
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-
-# Logs and databases #
-######################
-*.log
-*.sql
-*.sqlite
-*.sqlite3
-*.db
-
-# OS generated files #
-######################
+# OS
 .DS_Store
 .DS_Store?
 ._*
@@ -145,19 +57,26 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# IDEs and Editors #
-####################
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.sublime-workspace
-.sublime-project
+# Logs
+*.log
+logs/
+error.log
+debug.log
+app.log
 
-# Machine Learning & AI specific #
-###################################
-# Modelos treinados
+# Databases (GRANDES)
+data/knowledge_base/*.db
+data/knowledge_base/*.sqlite*
+data/*.sqlite*
+data/*.db
+
+# Large datasets (MANTER exemplos pequenos)
+data/raw/large_datasets/
+data/processed/large_files/
+data/knowledge_base/faiss_index.faiss
+data/knowledge_base/*.faiss
+
+# Machine Learning models
 *.model
 *.pkl
 *.pickle
@@ -171,126 +90,65 @@ desktop.ini
 *.bin
 *.safetensors
 
-# Datasets grandes
-data/raw/large_datasets/
-data/processed/large_files/
-*.csv.gz
-*.parquet
-*.feather
-data/raw/
-data\knowledge_base
-data
-*.pdf
-# FAISS índices
-*.faiss
-*.index
-data/knowledge_base/faiss_index.faiss
-data/knowledge_base/*.faiss
-
 # Vector embeddings
 embeddings/
 vectors/
 *.npy
 *.npz
 
-# Ollama/LLM cache
+# Cache
+.cache/
+cache/
+.pytest_cache/
 .ollama/
 ollama_cache/
 llm_cache/
 
-# Checkpoints de treinamento
-checkpoints/
-runs/
-logs/
-wandb/
-mlruns/
-.mlflow/
-
-# TensorBoard
-events.out.tfevents.*
-
-# Hugging Face cache
-.cache/huggingface/
-transformers_cache/
-
-# Specific to this project #
-############################
-# Dados processados grandes
-data/processed/classificacao_*.csv
-data/processed/classificacao_*.json
-data/processed/*.xlsx
-data/knowledge_base/metadata.db
-data/knowledge_base/ncm_mapping.json
-
-# Backups de banco
-*.sql.gz
-*.dump
-backup_*.sql
-
-# Arquivos temporários do sistema
+# Temporary files
 temp/
 tmp/
 *.tmp
 *.temp
+cleanup_backup*/
 
-# Arquivos de configuração sensíveis
-config/local.py
-config/production.py
-.env.local
-.env.production
-secrets.json
-credentials.json
-
-# Resultados de testes
+# Test outputs
 test_results/
 test_outputs/
 coverage_reports/
+htmlcov/
+.coverage
+.coverage.*
 
-# Cache do sistema
-.cache/
-cache/
-__pycache__/
-.pytest_cache/
+# Node.js (frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Logs específicos do projeto
-logs/
-*.log.*
-error.log
-debug.log
-app.log
+# Production builds
+build/
+dist/
 
-# Uploads de usuários
-uploads/
-user_data/
-temp_files/
+# Backups
+backup/
+*_backup*
+*_old*
+*.bak
+*.backup
 
-# Documentação gerada
+# Large CSVs (MANTER samples pequenos)
+data/**/*.csv
+!data/examples/*.csv
+!data/samples/*.csv
+
+# Large JSONs (MANTER configs e exemplos)
+data/**/*.json
+!data/examples/*.json
+!data/schema/*.json
+!package.json
+!frontend/package.json
+
+# Documentation builds (MANTER markdown sources)
 docs/_build/
 docs/build/
 site/
-
-# Performance profiling
-*.prof
-*.profile
-.profile/
-
-# Memory dumps
-*.dmp
-core.*
-
-# SSL certificates
-*.key
-*.crt
-*.pem
-*.p12
-
-# Docker
-.dockerignore
-docker-compose.override.yml
-.docker/
-
-# API keys e tokens (segurança extra)
-*api_key*
-*token*
-*secret*
-*password*
