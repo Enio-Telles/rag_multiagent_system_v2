@@ -20,6 +20,8 @@ import Produtos from './pages/Produtos/Produtos';
 import Classificacao from './pages/Classificacao/Classificacao';
 import Aprovacao from './pages/Aprovacao/Aprovacao';
 import Auditoria from './pages/Auditoria/Auditoria';
+import BasePadrao from './pages/BasePadrao/BasePadrao';
+import Processo from './pages/Processo/Processo';
 import Configuracoes from './pages/Configuracoes/Configuracoes';
 import PerfilUsuario from './pages/PerfilUsuario/PerfilUsuario';
 
@@ -192,6 +194,9 @@ function App() {
                     {/* Gestão de Produtos */}
                     <Route path="produtos" element={<Produtos />} />
                     
+                    {/* Execução do Processo */}
+                    <Route path="processo" element={<Processo />} />
+                    
                     {/* Classificação */}
                     <Route path="classificacao" element={<Classificacao />} />
                     
@@ -200,6 +205,9 @@ function App() {
                     
                     {/* Auditoria */}
                     <Route path="auditoria" element={<Auditoria />} />
+                    
+                    {/* Base de Produtos Padrão */}
+                    <Route path="base-padrao" element={<BasePadrao />} />
                     
                     {/* Configurações */}
                     <Route path="configuracoes" element={<Configuracoes />} />

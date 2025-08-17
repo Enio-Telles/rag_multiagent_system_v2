@@ -30,6 +30,14 @@ import {
   Avatar,
   Tooltip,
   Badge,
+  Tabs,
+  Tab,
+  CircularProgress,
+  Snackbar,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -48,142 +56,250 @@ import {
   Warning as WarningIcon,
   Error as ErrorIcon,
   AutoAwesome as AIIcon,
+  Refresh as RefreshIcon,
+  PlayArrow as ClassifyIcon,
+  Replay as ReclassifyIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { useEmpresa } from '../../contexts/EmpresaContext';
+import axios from 'axios';
 
-// Mock data - em produção virá da API
-const mockProdutos = [
-  {
-    id: 1,
-    nome: 'Smartphone Samsung Galaxy S23 Ultra',
-    descricao: 'Smartphone premium com câmera de 200MP e S Pen',
-    codigo_barras: '7893123456789',
-    categoria: 'Eletrônicos',
-    ncm: '85171200',
-    cest: '2140300',
-    status: 'ativo',
-    classificacao_status: 'aprovado',
-    confianca_ia: 96.5,
-    preco: 4999.99,
-    data_criacao: '2024-01-15',
-    ultima_atualizacao: '2024-03-10',
-  },
-  {
-    id: 2,
-    nome: 'Tênis Nike Air Max 270',
-    descricao: 'Tênis esportivo masculino com tecnologia Air Max',
-    codigo_barras: '7891234567890',
-    categoria: 'Calçados',
-    ncm: '64041100',
-    cest: '2840100',
-    status: 'ativo',
-    classificacao_status: 'pendente',
-    confianca_ia: 87.3,
-    preco: 899.99,
-    data_criacao: '2024-02-20',
-    ultima_atualizacao: '2024-03-12',
-  },
-  {
-    id: 3,
-    nome: 'Livro JavaScript: O Guia Definitivo',
-    descricao: 'Guia completo para programação JavaScript moderna',
-    codigo_barras: '9788563308047',
-    categoria: 'Livros',
-    ncm: '49019900',
-    cest: null,
-    status: 'ativo',
-    classificacao_status: 'rejeitado',
-    confianca_ia: 45.2,
-    preco: 129.90,
-    data_criacao: '2024-03-01',
-    ultima_atualizacao: '2024-03-11',
-  },
-];
-
-const statusColors = {
-  ativo: 'success',
-  inativo: 'default',
-  pendente: 'warning',
-};
-
-const classificacaoColors = {
-  aprovado: 'success',
-  pendente: 'warning',
-  rejeitado: 'error',
-  nao_classificado: 'default',
-};
+// API Base URL
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 function Produtos() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const { empresaAtual } = useEmpresa();
-  
-  const [produtos, setProdutos] = useState(mockProdutos);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Estados principais
+  const [produtos, setProdutos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+
+  // Estados da interface
+  const [tabValue, setTabValue] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterAnchor, setFilterAnchor] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Filtros
-  const [filters, setFilters] = useState({
-    status: 'todos',
-    classificacao: 'todos',
-    categoria: 'todas',
-  });
+  // Estados dos diálogos
+  const [productDialog, setProductDialog] = useState({ open: false, product: null });
+  const [classificationDialog, setClassificationDialog] = useState({ open: false, products: [] });
+  const [batchActionLoading, setBatchActionLoading] = useState(false);
 
-  useEffect(() => {
-    // Simular carregamento de dados
-    setLoading(true);
-    setTimeout(() => {
+  // Filtros baseados nas abas
+  const tabs = [
+    { label: 'Todos', value: '', badge: 0 },
+    { label: 'A Classificar', value: 'nao_classificado', badge: 0 },
+    { label: 'Classificados', value: 'classificado', badge: 0 },
+    { label: 'Pendentes', value: 'pendente', badge: 0 },
+  ];
+
+  // Função para buscar produtos
+  const fetchProdutos = async (status = '', search = '', pageNum = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = {
+        page: pageNum + 1,
+        limit: rowsPerPage,
+        ...(status && { status }),
+        ...(search && { search }),
+      };
+
+      const response = await axios.get(`${API_BASE_URL}/produtos`, { params });
+      
+      setProdutos(response.data.produtos);
+      setTotalCount(response.data.pagination.total);
+
+      // Atualizar badges das abas baseado nos dados
+      // Esta lógica pode ser melhorada com um endpoint específico para contadores
+      
+    } catch (err) {
+      console.error('Erro ao buscar produtos:', err);
+      setError('Erro ao carregar produtos. Verifique se a API está rodando.');
+      
+      // Fallback para dados mock
+      setProdutos([
+        {
+          produto_id: 1,
+          descricao_produto: 'Smartphone Samsung Galaxy S24',
+          ncm_sugerido: '85171200',
+          cest_sugerido: '21.001.00',
+          status_revisao: 'APROVADO',
+          status_classificacao: 'classificado',
+          confianca_sugerida: 0.96,
+          data_criacao: '2024-03-01T10:00:00'
+        },
+        {
+          produto_id: 2,
+          descricao_produto: 'Tênis Nike Air Max 270',
+          ncm_sugerido: null,
+          cest_sugerido: null,
+          status_revisao: 'PENDENTE',
+          status_classificacao: 'nao_classificado',
+          confianca_sugerida: null,
+          data_criacao: '2024-03-01T11:00:00'
+        }
+      ]);
+      setTotalCount(2);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, [empresaAtual]);
+    }
+  };
 
-  // Filtrar produtos
-  const filteredProdutos = produtos.filter(produto => {
-    const matchSearch = produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       produto.codigo_barras.includes(searchTerm) ||
-                       produto.categoria.toLowerCase().includes(searchTerm.toLowerCase());
+  // Effect para carregar dados quando parâmetros mudarem
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const statusFromUrl = urlParams.get('status') || '';
     
-    const matchStatus = filters.status === 'todos' || produto.status === filters.status;
-    const matchClassificacao = filters.classificacao === 'todos' || produto.classificacao_status === filters.classificacao;
-    const matchCategoria = filters.categoria === 'todas' || produto.categoria === filters.categoria;
+    // Definir aba baseada na URL
+    const tabIndex = tabs.findIndex(tab => tab.value === statusFromUrl);
+    if (tabIndex >= 0) {
+      setTabValue(tabIndex);
+    }
 
-    return matchSearch && matchStatus && matchClassificacao && matchCategoria;
-  });
+    fetchProdutos(statusFromUrl, searchTerm, page);
+  }, [location.search, searchTerm, page, rowsPerPage]);
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+  // Função para classificar produto individual
+  const handleClassifyProduct = async (productId, forceReclassify = false) => {
+    try {
+      setBatchActionLoading(true);
+      
+      const response = await axios.post(
+        `${API_BASE_URL}/produtos/${productId}/classificar`,
+        null,
+        { params: { force_reclassify: forceReclassify } }
+      );
+
+      setSnackbar({
+        open: true,
+        message: response.data.message,
+        severity: 'success'
+      });
+
+      // Recarregar produtos após alguns segundos
+      setTimeout(() => {
+        fetchProdutos(tabs[tabValue].value, searchTerm, page);
+      }, 2000);
+
+    } catch (err) {
+      console.error('Erro ao classificar produto:', err);
+      setSnackbar({
+        open: true,
+        message: 'Erro ao iniciar classificação',
+        severity: 'error'
+      });
+    } finally {
+      setBatchActionLoading(false);
+    }
   };
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+  // Função para classificação em lote
+  const handleBatchClassification = async () => {
+    if (selectedProducts.length === 0) return;
+
+    try {
+      setBatchActionLoading(true);
+      
+      // Para cada produto selecionado, iniciar classificação
+      const promises = selectedProducts.map(productId =>
+        axios.post(`${API_BASE_URL}/produtos/${productId}/classificar`)
+      );
+
+      await Promise.all(promises);
+
+      setSnackbar({
+        open: true,
+        message: `Classificação iniciada para ${selectedProducts.length} produtos`,
+        severity: 'success'
+      });
+
+      setSelectedProducts([]);
+      setClassificationDialog({ open: false, products: [] });
+
+      // Recarregar após alguns segundos
+      setTimeout(() => {
+        fetchProdutos(tabs[tabValue].value, searchTerm, page);
+      }, 2000);
+
+    } catch (err) {
+      console.error('Erro na classificação em lote:', err);
+      setSnackbar({
+        open: true,
+        message: 'Erro na classificação em lote',
+        severity: 'error'
+      });
+    } finally {
+      setBatchActionLoading(false);
+    }
+  };
+
+  // Função para mudança de aba
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
     setPage(0);
+    setSelectedProducts([]);
+    
+    const status = tabs[newValue].value;
+    const url = status ? `/produtos?status=${status}` : '/produtos';
+    navigate(url);
   };
 
-  const handleViewDetails = (produto) => {
-    setSelectedProduct(produto);
-    setDetailsOpen(true);
+  // Função para busca
+  const handleSearch = (event) => {
+    if (event.key === 'Enter' || event.type === 'click') {
+      setPage(0);
+      fetchProdutos(tabs[tabValue].value, searchTerm, 0);
+    }
   };
 
-  const handleClassifyProduct = (produto) => {
-    navigate(`/classificacao?produto=${produto.id}`);
+  // Renderizar status do produto
+  const renderProductStatus = (produto) => {
+    if (produto.status_classificacao === 'classificado') {
+      return (
+        <Chip
+          icon={<SuccessIcon />}
+          label="Classificado"
+          color="success"
+          size="small"
+        />
+      );
+    } else {
+      return (
+        <Chip
+          icon={<WarningIcon />}
+          label="Pendente"
+          color="warning"
+          size="small"
+        />
+      );
+    }
   };
 
-  const getConfiancaColor = (confianca) => {
-    if (confianca >= 90) return 'success';
-    if (confianca >= 70) return 'warning';
-    return 'error';
-  };
-
-  const getConfiancaIcon = (confianca) => {
-    if (confianca >= 90) return <SuccessIcon />;
-    if (confianca >= 70) return <WarningIcon />;
-    return <ErrorIcon />;
+  // Renderizar confiança
+  const renderConfidence = (confidence) => {
+    if (!confidence) return '-';
+    
+    const percentage = Math.round(confidence * 100);
+    const color = percentage >= 90 ? 'success' : percentage >= 70 ? 'warning' : 'error';
+    
+    return (
+      <Chip
+        label={`${percentage}%`}
+        color={color}
+        size="small"
+        variant="outlined"
+      />
+    );
   };
 
   return (
@@ -195,301 +311,225 @@ function Produtos() {
         </Typography>
         
         <Typography variant="body1" color="text.secondary" gutterBottom>
-          Gerencie o catálogo de produtos da {empresaAtual?.nome}
+          Gerencie o catálogo de produtos e suas classificações fiscais
         </Typography>
 
-        {/* Estatísticas rápidas */}
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Avatar sx={{ bgcolor: 'primary.light', mx: 'auto', mb: 1 }}>
-                  <InventoryIcon color="primary" />
-                </Avatar>
-                <Typography variant="h6" fontWeight="bold">
-                  {produtos.length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total de Produtos
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+        {/* Controles */}
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
+          <TextField
+            placeholder="Buscar produtos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleSearch}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            size="small"
+            sx={{ width: 300 }}
+          />
           
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Avatar sx={{ bgcolor: 'success.light', mx: 'auto', mb: 1 }}>
-                  <SuccessIcon color="success" />
-                </Avatar>
-                <Typography variant="h6" fontWeight="bold">
-                  {produtos.filter(p => p.classificacao_status === 'aprovado').length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Classificados
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Avatar sx={{ bgcolor: 'warning.light', mx: 'auto', mb: 1 }}>
-                  <WarningIcon color="warning" />
-                </Avatar>
-                <Typography variant="h6" fontWeight="bold">
-                  {produtos.filter(p => p.classificacao_status === 'pendente').length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Pendentes
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Avatar sx={{ bgcolor: 'info.light', mx: 'auto', mb: 1 }}>
-                  <AIIcon color="info" />
-                </Avatar>
-                <Typography variant="h6" fontWeight="bold">
-                  {Math.round(produtos.reduce((acc, p) => acc + p.confianca_ia, 0) / produtos.length)}%
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Precisão Média IA
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+          <Button
+            variant="outlined"
+            startIcon={<SearchIcon />}
+            onClick={handleSearch}
+          >
+            Buscar
+          </Button>
+
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => fetchProdutos(tabs[tabValue].value, searchTerm, page)}
+            disabled={loading}
+          >
+            Atualizar
+          </Button>
+
+          {selectedProducts.length > 0 && (
+            <Button
+              variant="contained"
+              startIcon={<ClassifyIcon />}
+              onClick={() => setClassificationDialog({ open: true, products: selectedProducts })}
+              disabled={batchActionLoading}
+            >
+              Classificar Selecionados ({selectedProducts.length})
+            </Button>
+          )}
+        </Box>
       </Box>
 
-      {/* Filtros e Busca */}
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Tabs */}
       <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                placeholder="Buscar produtos por nome, código de barras ou categoria..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                <Button
-                  startIcon={<FilterIcon />}
-                  onClick={(e) => setFilterAnchor(e.currentTarget)}
-                  variant="outlined"
-                >
-                  Filtros
-                </Button>
-                
-                <Button
-                  startIcon={<UploadIcon />}
-                  onClick={() => setUploadOpen(true)}
-                  variant="outlined"
-                >
-                  Importar
-                </Button>
-                
-                <Button
-                  startIcon={<DownloadIcon />}
-                  variant="outlined"
-                >
-                  Exportar
-                </Button>
-                
-                <Button
-                  startIcon={<AddIcon />}
-                  variant="contained"
-                  onClick={() => navigate('/produtos/novo')}
-                >
-                  Novo Produto
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+        >
+          {tabs.map((tab, index) => (
+            <Tab
+              key={index}
+              label={
+                <Badge badgeContent={tab.badge} color="error">
+                  {tab.label}
+                </Badge>
+              }
+            />
+          ))}
+        </Tabs>
       </Card>
 
       {/* Tabela de Produtos */}
       <Card>
         <CardContent sx={{ p: 0 }}>
-          {loading ? (
-            <Box sx={{ p: 3 }}>
-              <LinearProgress />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Carregando produtos...
-              </Typography>
-            </Box>
-          ) : (
-            <>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Produto</TableCell>
-                      <TableCell>Categoria</TableCell>
-                      <TableCell>Código de Barras</TableCell>
-                      <TableCell>Classificação</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Confiança IA</TableCell>
-                      <TableCell>Preço</TableCell>
-                      <TableCell align="center">Ações</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredProdutos
-                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((produto) => (
-                        <TableRow key={produto.id} hover>
-                          <TableCell>
-                            <Box>
-                              <Typography variant="body2" fontWeight="medium">
-                                {produto.nome}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {produto.descricao.substring(0, 50)}...
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Chip
-                              label={produto.categoria}
-                              size="small"
-                              variant="outlined"
-                              icon={<CategoryIcon />}
-                            />
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <BarcodeIcon fontSize="small" />
-                              <Typography variant="body2" fontFamily="monospace">
-                                {produto.codigo_barras}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Chip
-                              label={produto.classificacao_status}
-                              size="small"
-                              color={classificacaoColors[produto.classificacao_status]}
-                            />
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Chip
-                              label={produto.status}
-                              size="small"
-                              color={statusColors[produto.status]}
-                            />
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Chip
-                                icon={getConfiancaIcon(produto.confianca_ia)}
-                                label={`${produto.confianca_ia}%`}
-                                size="small"
-                                color={getConfiancaColor(produto.confianca_ia)}
-                              />
-                            </Box>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="medium">
-                              R$ {produto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </Typography>
-                          </TableCell>
-                          
-                          <TableCell align="center">
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              <Tooltip title="Ver detalhes">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleViewDetails(produto)}
-                                >
-                                  <ViewIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              
-                              <Tooltip title="Editar">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => navigate(`/produtos/${produto.id}/editar`)}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              
-                              <Tooltip title="Classificar com IA">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleClassifyProduct(produto)}
-                                  color="primary"
-                                >
-                                  <AIIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25, 50]}
-                component="div"
-                count={filteredProdutos.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-                labelRowsPerPage="Produtos por página:"
-              />
-            </>
-          )}
+          {loading && <LinearProgress />}
+          
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      indeterminate={selectedProducts.length > 0 && selectedProducts.length < produtos.length}
+                      checked={produtos.length > 0 && selectedProducts.length === produtos.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedProducts(produtos.map(p => p.produto_id));
+                        } else {
+                          setSelectedProducts([]);
+                        }
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>Produto</TableCell>
+                  <TableCell>NCM</TableCell>
+                  <TableCell>CEST</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Confiança</TableCell>
+                  <TableCell>Data</TableCell>
+                  <TableCell>Ações</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {produtos.map((produto) => (
+                  <TableRow key={produto.produto_id} hover>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedProducts.includes(produto.produto_id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedProducts([...selectedProducts, produto.produto_id]);
+                          } else {
+                            setSelectedProducts(selectedProducts.filter(id => id !== produto.produto_id));
+                          }
+                        }}
+                      />
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: 'primary.light' }}>
+                          <InventoryIcon />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {produto.descricao_produto}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            ID: {produto.produto_id}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    
+                    <TableCell>
+                      {produto.ncm_sugerido || '-'}
+                    </TableCell>
+                    
+                    <TableCell>
+                      {produto.cest_sugerido || '-'}
+                    </TableCell>
+                    
+                    <TableCell>
+                      {renderProductStatus(produto)}
+                    </TableCell>
+                    
+                    <TableCell>
+                      {renderConfidence(produto.confianca_sugerida)}
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Typography variant="body2">
+                        {new Date(produto.data_criacao).toLocaleDateString('pt-BR')}
+                      </Typography>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Ver detalhes">
+                          <IconButton
+                            size="small"
+                            onClick={() => setProductDialog({ open: true, product: produto })}
+                          >
+                            <ViewIcon />
+                          </IconButton>
+                        </Tooltip>
+                        
+                        <Tooltip title={produto.status_classificacao === 'classificado' ? 'Reclassificar' : 'Classificar'}>
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleClassifyProduct(
+                              produto.produto_id, 
+                              produto.status_classificacao === 'classificado'
+                            )}
+                            disabled={batchActionLoading}
+                          >
+                            {produto.status_classificacao === 'classificado' ? <ReclassifyIcon /> : <ClassifyIcon />}
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Paginação */}
+          <TablePagination
+            component="div"
+            count={totalCount}
+            page={page}
+            onPageChange={(e, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            labelRowsPerPage="Linhas por página"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} de ${count !== -1 ? count : `mais de ${to}`}`
+            }
+          />
         </CardContent>
       </Card>
 
-      {/* Menu de Filtros */}
-      <Menu
-        anchorEl={filterAnchor}
-        open={Boolean(filterAnchor)}
-        onClose={() => setFilterAnchor(null)}
-      >
-        <MenuItem onClick={() => setFilterAnchor(null)}>
-          Status: Todos
-        </MenuItem>
-        <MenuItem onClick={() => setFilterAnchor(null)}>
-          Status: Ativos
-        </MenuItem>
-        <MenuItem onClick={() => setFilterAnchor(null)}>
-          Status: Inativos
-        </MenuItem>
-      </Menu>
-
       {/* Dialog de Detalhes do Produto */}
       <Dialog
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
+        open={productDialog.open}
+        onClose={() => setProductDialog({ open: false, product: null })}
         maxWidth="md"
         fullWidth
       >
@@ -497,127 +537,126 @@ function Produtos() {
           Detalhes do Produto
         </DialogTitle>
         <DialogContent>
-          {selectedProduct && (
+          {productDialog.product && (
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
-                  {selectedProduct.nome}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  {selectedProduct.descricao}
+                  {productDialog.product.descricao_produto}
                 </Typography>
               </Grid>
               
               <Grid item xs={6}>
-                <Typography variant="subtitle2">Código de Barras:</Typography>
-                <Typography variant="body2">{selectedProduct.codigo_barras}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  ID do Produto
+                </Typography>
+                <Typography variant="body1">
+                  {productDialog.product.produto_id}
+                </Typography>
               </Grid>
               
               <Grid item xs={6}>
-                <Typography variant="subtitle2">Categoria:</Typography>
-                <Typography variant="body2">{selectedProduct.categoria}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Status
+                </Typography>
+                {renderProductStatus(productDialog.product)}
               </Grid>
               
               <Grid item xs={6}>
-                <Typography variant="subtitle2">NCM:</Typography>
-                <Typography variant="body2">{selectedProduct.ncm}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  NCM Sugerido
+                </Typography>
+                <Typography variant="body1">
+                  {productDialog.product.ncm_sugerido || 'Não classificado'}
+                </Typography>
               </Grid>
               
               <Grid item xs={6}>
-                <Typography variant="subtitle2">CEST:</Typography>
-                <Typography variant="body2">{selectedProduct.cest || 'N/A'}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  CEST Sugerido
+                </Typography>
+                <Typography variant="body1">
+                  {productDialog.product.cest_sugerido || 'Não classificado'}
+                </Typography>
               </Grid>
               
               <Grid item xs={6}>
-                <Typography variant="subtitle2">Confiança IA:</Typography>
-                <Chip
-                  label={`${selectedProduct.confianca_ia}%`}
-                  color={getConfiancaColor(selectedProduct.confianca_ia)}
-                  size="small"
-                />
+                <Typography variant="body2" color="text.secondary">
+                  Confiança
+                </Typography>
+                {renderConfidence(productDialog.product.confianca_sugerida)}
               </Grid>
               
               <Grid item xs={6}>
-                <Typography variant="subtitle2">Preço:</Typography>
-                <Typography variant="body2">
-                  R$ {selectedProduct.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <Typography variant="body2" color="text.secondary">
+                  Data de Criação
+                </Typography>
+                <Typography variant="body1">
+                  {new Date(productDialog.product.data_criacao).toLocaleString('pt-BR')}
                 </Typography>
               </Grid>
             </Grid>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDetailsOpen(false)}>
+          <Button onClick={() => setProductDialog({ open: false, product: null })}>
             Fechar
           </Button>
-          <Button variant="contained" onClick={() => {
-            setDetailsOpen(false);
-            navigate(`/produtos/${selectedProduct.id}/editar`);
-          }}>
-            Editar
-          </Button>
+          {productDialog.product && (
+            <Button
+              variant="contained"
+              startIcon={productDialog.product.status_classificacao === 'classificado' ? <ReclassifyIcon /> : <ClassifyIcon />}
+              onClick={() => {
+                handleClassifyProduct(
+                  productDialog.product.produto_id,
+                  productDialog.product.status_classificacao === 'classificado'
+                );
+                setProductDialog({ open: false, product: null });
+              }}
+            >
+              {productDialog.product.status_classificacao === 'classificado' ? 'Reclassificar' : 'Classificar'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
-      {/* Dialog de Upload */}
+      {/* Dialog de Classificação em Lote */}
       <Dialog
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        maxWidth="sm"
-        fullWidth
+        open={classificationDialog.open}
+        onClose={() => setClassificationDialog({ open: false, products: [] })}
       >
-        <DialogTitle>Importar Produtos</DialogTitle>
+        <DialogTitle>
+          Classificação em Lote
+        </DialogTitle>
         <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Faça upload de um arquivo Excel (.xlsx) ou CSV com os dados dos produtos.
-          </Alert>
-          <Box
-            sx={{
-              border: '2px dashed',
-              borderColor: 'grey.300',
-              borderRadius: 1,
-              p: 4,
-              textAlign: 'center',
-              cursor: 'pointer',
-              '&:hover': {
-                borderColor: 'primary.main',
-              },
-            }}
-          >
-            <UploadIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
-            <Typography variant="body1" gutterBottom>
-              Clique para selecionar arquivo ou arraste aqui
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Formatos aceitos: .xlsx, .csv (máx. 10MB)
-            </Typography>
-          </Box>
+          <Typography variant="body1" gutterBottom>
+            Deseja iniciar a classificação para {selectedProducts.length} produtos selecionados?
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Este processo pode levar alguns minutos para ser concluído.
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUploadOpen(false)}>
+          <Button onClick={() => setClassificationDialog({ open: false, products: [] })}>
             Cancelar
           </Button>
-          <Button variant="contained">
-            Fazer Upload
+          <Button
+            variant="contained"
+            onClick={handleBatchClassification}
+            disabled={batchActionLoading}
+            startIcon={batchActionLoading ? <CircularProgress size={16} /> : <ClassifyIcon />}
+          >
+            {batchActionLoading ? 'Processando...' : 'Classificar'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* FAB para ações rápidas */}
-      <Fab
-        color="primary"
-        aria-label="classificar todos"
-        sx={{
-          position: 'fixed',
-          bottom: 16,
-          right: 16,
-        }}
-        onClick={() => navigate('/classificacao')}
-      >
-        <Badge badgeContent={produtos.filter(p => p.classificacao_status === 'pendente').length} color="error">
-          <AIIcon />
-        </Badge>
-      </Fab>
+      {/* Snackbar para notificações */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        message={snackbar.message}
+      />
     </Box>
   );
 }

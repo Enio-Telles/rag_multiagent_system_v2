@@ -20,6 +20,7 @@ from datetime import datetime
 import logging
 import uuid
 import time
+import asyncio
 
 # Imports do sistema unificado
 from services.unified_sqlite_service import get_unified_service
@@ -747,6 +748,616 @@ async def remover_empresa():
 
 # ==================
 # ARQUIVOS ESTÁTICOS E ROOT
+# ==================
+# NOVOS ENDPOINTS - PLANO DE MELHORIAS
+# ==================
+
+@app.get("/api/v1/dashboard/stats")
+async def get_dashboard_stats():
+    """
+    [Tarefa 1.1] GET /dashboard/stats: Retorna estatísticas para o dashboard
+    """
+    try:
+        service = get_unified_service()
+        
+        # Buscar estatísticas dos produtos
+        with service.get_session() as session:
+            # Total de produtos
+            total_produtos = session.execute(
+                "SELECT COUNT(*) as total FROM produtos"
+            ).fetchone()[0]
+            
+            # Produtos classificados (com NCM válido)
+            produtos_classificados = session.execute(
+                """
+                SELECT COUNT(*) as classificados 
+                FROM produtos 
+                WHERE ncm_sugerido IS NOT NULL 
+                AND ncm_sugerido != ''
+                AND status_revisao != 'PENDENTE'
+                """
+            ).fetchone()[0]
+            
+            # Produtos pendentes
+            produtos_pendentes = total_produtos - produtos_classificados
+            
+            # Taxa de sucesso
+            taxa_sucesso = round((produtos_classificados / total_produtos * 100), 2) if total_produtos > 0 else 0
+            
+            # Estatísticas de classificações hoje
+            classificacoes_hoje = session.execute(
+                """
+                SELECT COUNT(*) as hoje 
+                FROM classificacoes_automaticas 
+                WHERE DATE(data_criacao) = DATE('now')
+                """
+            ).fetchone()[0]
+            
+            # Produtos no golden set
+            golden_set_count = session.execute(
+                "SELECT COUNT(*) as golden FROM golden_set"
+            ).fetchone()[0]
+            
+            # Performance dos agentes (últimos 30 dias)
+            agentes_performance = session.execute(
+                """
+                SELECT 
+                    agente_nome,
+                    COUNT(*) as total_execucoes,
+                    AVG(nivel_confianca) as confianca_media,
+                    AVG(tempo_processamento_ms) as tempo_medio
+                FROM explicacoes_agentes 
+                WHERE DATE(data_criacao) >= DATE('now', '-30 days')
+                GROUP BY agente_nome
+                ORDER BY total_execucoes DESC
+                """
+            ).fetchall()
+            
+            return {
+                "resumo": {
+                    "total_produtos": total_produtos,
+                    "produtos_classificados": produtos_classificados,
+                    "produtos_pendentes": produtos_pendentes,
+                    "taxa_sucesso": taxa_sucesso,
+                    "classificacoes_hoje": classificacoes_hoje,
+                    "golden_set_size": golden_set_count
+                },
+                "agentes_performance": [
+                    {
+                        "nome": row[0],
+                        "total_execucoes": row[1],
+                        "confianca_media": round(row[2], 2) if row[2] else 0,
+                        "tempo_medio_ms": round(row[3], 2) if row[3] else 0
+                    }
+                    for row in agentes_performance
+                ],
+                "data_atualizacao": datetime.now().isoformat()
+            }
+            
+    except Exception as e:
+        logger.error(f"Erro ao buscar estatísticas do dashboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.get("/api/v1/produtos")
+async def get_produtos_filtrados(
+    status: Optional[str] = Query(None, description="Filtro por status: classificado, nao_classificado, pendente"),
+    page: int = Query(1, ge=1, description="Página (começa em 1)"),
+    limit: int = Query(50, ge=1, le=1000, description="Itens por página"),
+    search: Optional[str] = Query(None, description="Busca por descrição")
+):
+    """
+    [Tarefa 1.2] GET /produtos: Adicionar filtro por status (classificado, nao_classificado)
+    """
+    try:
+        service = get_unified_service()
+        offset = (page - 1) * limit
+        
+        with service.get_session() as session:
+            # Construir query base
+            where_conditions = []
+            params = {}
+            
+            # Filtro por status
+            if status:
+                if status == "classificado":
+                    where_conditions.append("ncm_sugerido IS NOT NULL AND ncm_sugerido != '' AND status_revisao != 'PENDENTE'")
+                elif status == "nao_classificado":
+                    where_conditions.append("(ncm_sugerido IS NULL OR ncm_sugerido = '' OR status_revisao = 'PENDENTE')")
+                elif status == "pendente":
+                    where_conditions.append("status_revisao = 'PENDENTE'")
+            
+            # Filtro por busca
+            if search:
+                where_conditions.append("descricao_produto LIKE :search")
+                params["search"] = f"%{search}%"
+            
+            # Montar WHERE clause
+            where_clause = ""
+            if where_conditions:
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+            
+            # Query principal
+            query = f"""
+                SELECT 
+                    p.*,
+                    CASE 
+                        WHEN p.ncm_sugerido IS NOT NULL AND p.ncm_sugerido != '' AND p.status_revisao != 'PENDENTE' 
+                        THEN 'classificado'
+                        ELSE 'nao_classificado'
+                    END as status_classificacao
+                FROM produtos p
+                {where_clause}
+                ORDER BY p.data_criacao DESC
+                LIMIT :limit OFFSET :offset
+            """
+            
+            params.update({"limit": limit, "offset": offset})
+            
+            produtos = session.execute(query, params).fetchall()
+            
+            # Query para total
+            count_query = f"""
+                SELECT COUNT(*) as total 
+                FROM produtos p 
+                {where_clause}
+            """
+            
+            total = session.execute(count_query, {k: v for k, v in params.items() if k not in ['limit', 'offset']}).fetchone()[0]
+            
+            # Formatar resultados
+            produtos_list = []
+            for row in produtos:
+                produto = dict(row._mapping)
+                produto['status_classificacao'] = row.status_classificacao
+                produtos_list.append(produto)
+            
+            return {
+                "produtos": produtos_list,
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit
+                },
+                "filtros_aplicados": {
+                    "status": status,
+                    "search": search
+                }
+            }
+            
+    except Exception as e:
+        logger.error(f"Erro ao buscar produtos filtrados: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.post("/api/v1/produtos/{produto_id}/classificar")
+async def classificar_produto_individual(
+    produto_id: int,
+    background_tasks: BackgroundTasks,
+    force_reclassify: bool = Query(False, description="Forçar reclassificação mesmo se já classificado")
+):
+    """
+    [Tarefa 1.3] POST /produtos/{id}/classificar: Inicia a classificação para um produto
+    """
+    try:
+        service = get_unified_service()
+        
+        with service.get_session() as session:
+            # Verificar se produto existe
+            produto = session.execute(
+                "SELECT * FROM produtos WHERE produto_id = ?", 
+                (produto_id,)
+            ).fetchone()
+            
+            if not produto:
+                raise HTTPException(status_code=404, detail="Produto não encontrado")
+            
+            # Verificar se já está classificado
+            if not force_reclassify and produto.ncm_sugerido and produto.status_revisao != 'PENDENTE':
+                return {
+                    "message": "Produto já classificado",
+                    "produto_id": produto_id,
+                    "status": "already_classified",
+                    "ncm_atual": produto.ncm_sugerido,
+                    "cest_atual": produto.cest_sugerido
+                }
+            
+            # Gerar ID da sessão
+            sessao_id = str(uuid.uuid4())
+            
+            # Adicionar tarefa de classificação em background
+            background_tasks.add_task(
+                processar_classificacao_individual,
+                produto_id=produto_id,
+                sessao_id=sessao_id,
+                force_reclassify=force_reclassify
+            )
+            
+            return {
+                "message": "Classificação iniciada",
+                "produto_id": produto_id,
+                "sessao_id": sessao_id,
+                "status": "processing",
+                "estimated_time_seconds": 30
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao iniciar classificação do produto {produto_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+# Endpoints para Base Padrão (Golden Set)
+@app.get("/api/v1/base-padrao")
+async def get_base_padrao(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=1000),
+    search: Optional[str] = Query(None, description="Busca por descrição")
+):
+    """
+    [Tarefa 1.4] Endpoints CRUD para a Base Padrão - Listar
+    """
+    try:
+        service = get_unified_service()
+        offset = (page - 1) * limit
+        
+        with service.get_session() as session:
+            where_clause = ""
+            params = {"limit": limit, "offset": offset}
+            
+            if search:
+                where_clause = "WHERE descricao_produto LIKE :search OR descricao_completa LIKE :search"
+                params["search"] = f"%{search}%"
+            
+            query = f"""
+                SELECT * FROM golden_set 
+                {where_clause}
+                ORDER BY data_criacao DESC
+                LIMIT :limit OFFSET :offset
+            """
+            
+            items = session.execute(query, params).fetchall()
+            
+            # Total para paginação
+            count_query = f"SELECT COUNT(*) as total FROM golden_set {where_clause}"
+            count_params = {k: v for k, v in params.items() if k not in ['limit', 'offset']}
+            total = session.execute(count_query, count_params).fetchone()[0]
+            
+            return {
+                "items": [dict(row._mapping) for row in items],
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": total,
+                    "pages": (total + limit - 1) // limit
+                }
+            }
+            
+    except Exception as e:
+        logger.error(f"Erro ao buscar base padrão: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.post("/api/v1/base-padrao")
+async def create_base_padrao_item(item: GoldenSetRequest):
+    """
+    [Tarefa 1.4] Endpoints CRUD para a Base Padrão - Criar
+    """
+    try:
+        service = get_unified_service()
+        
+        with service.get_session() as session:
+            # Verificar se já existe item similar
+            existing = session.execute(
+                """
+                SELECT golden_set_id FROM golden_set 
+                WHERE descricao_produto = ? OR produto_id = ?
+                """, 
+                (item.descricao_produto, item.produto_id)
+            ).fetchone()
+            
+            if existing:
+                raise HTTPException(status_code=400, detail="Item similar já existe na base padrão")
+            
+            # Inserir novo item
+            golden_set_id = str(uuid.uuid4())
+            
+            session.execute(
+                """
+                INSERT INTO golden_set (
+                    golden_set_id, produto_id, descricao_produto, descricao_completa,
+                    codigo_produto, gtin_validado, ncm_final, cest_final,
+                    fonte_validacao, justificativa_inclusao, revisado_por,
+                    qualidade_score, data_criacao
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    golden_set_id, item.produto_id, item.descricao_produto,
+                    item.descricao_completa, item.codigo_produto, item.gtin_validado,
+                    item.ncm_final, item.cest_final, item.fonte_validacao,
+                    item.justificativa_inclusao, item.revisado_por,
+                    item.qualidade_score, datetime.now().isoformat()
+                )
+            )
+            
+            session.commit()
+            
+            return {
+                "message": "Item adicionado à base padrão com sucesso",
+                "golden_set_id": golden_set_id,
+                "status": "created"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao criar item na base padrão: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.put("/api/v1/base-padrao/{golden_set_id}")
+async def update_base_padrao_item(golden_set_id: str, item: GoldenSetRequest):
+    """
+    [Tarefa 1.4] Endpoints CRUD para a Base Padrão - Atualizar
+    """
+    try:
+        service = get_unified_service()
+        
+        with service.get_session() as session:
+            # Verificar se item existe
+            existing = session.execute(
+                "SELECT golden_set_id FROM golden_set WHERE golden_set_id = ?",
+                (golden_set_id,)
+            ).fetchone()
+            
+            if not existing:
+                raise HTTPException(status_code=404, detail="Item não encontrado na base padrão")
+            
+            # Atualizar item
+            session.execute(
+                """
+                UPDATE golden_set SET
+                    descricao_produto = ?, descricao_completa = ?,
+                    codigo_produto = ?, gtin_validado = ?,
+                    ncm_final = ?, cest_final = ?,
+                    fonte_validacao = ?, justificativa_inclusao = ?,
+                    revisado_por = ?, qualidade_score = ?,
+                    data_atualizacao = ?
+                WHERE golden_set_id = ?
+                """,
+                (
+                    item.descricao_produto, item.descricao_completa,
+                    item.codigo_produto, item.gtin_validado,
+                    item.ncm_final, item.cest_final,
+                    item.fonte_validacao, item.justificativa_inclusao,
+                    item.revisado_por, item.qualidade_score,
+                    datetime.now().isoformat(), golden_set_id
+                )
+            )
+            
+            session.commit()
+            
+            return {
+                "message": "Item atualizado com sucesso",
+                "golden_set_id": golden_set_id,
+                "status": "updated"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao atualizar item na base padrão: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.delete("/api/v1/base-padrao/{golden_set_id}")
+async def delete_base_padrao_item(golden_set_id: str):
+    """
+    [Tarefa 1.4] Endpoints CRUD para a Base Padrão - Excluir
+    """
+    try:
+        service = get_unified_service()
+        
+        with service.get_session() as session:
+            # Verificar se item existe
+            existing = session.execute(
+                "SELECT golden_set_id FROM golden_set WHERE golden_set_id = ?",
+                (golden_set_id,)
+            ).fetchone()
+            
+            if not existing:
+                raise HTTPException(status_code=404, detail="Item não encontrado na base padrão")
+            
+            # Excluir item
+            session.execute(
+                "DELETE FROM golden_set WHERE golden_set_id = ?",
+                (golden_set_id,)
+            )
+            
+            session.commit()
+            
+            return {
+                "message": "Item removido da base padrão com sucesso",
+                "golden_set_id": golden_set_id,
+                "status": "deleted"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao excluir item da base padrão: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+# Endpoints para o Wizard de Processo
+@app.post("/api/v1/processo/sincronizar")
+async def sincronizar_produtos(background_tasks: BackgroundTasks):
+    """
+    [Tarefa 1.5] Endpoints para o Wizard - Sincronizar produtos do PostgreSQL
+    """
+    try:
+        sessao_id = str(uuid.uuid4())
+        
+        background_tasks.add_task(
+            executar_sincronizacao_produtos,
+            sessao_id=sessao_id
+        )
+        
+        return {
+            "message": "Sincronização de produtos iniciada",
+            "sessao_id": sessao_id,
+            "status": "processing",
+            "estimated_time_minutes": 5
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao iniciar sincronização: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.post("/api/v1/processo/classificar-lote")
+async def classificar_lote(
+    background_tasks: BackgroundTasks,
+    limite_produtos: Optional[int] = Query(None, description="Limite de produtos para classificar"),
+    apenas_pendentes: bool = Query(True, description="Classificar apenas produtos pendentes")
+):
+    """
+    [Tarefa 1.5] Endpoints para o Wizard - Classificar produtos em lote
+    """
+    try:
+        sessao_id = str(uuid.uuid4())
+        
+        background_tasks.add_task(
+            executar_classificacao_lote,
+            sessao_id=sessao_id,
+            limite_produtos=limite_produtos,
+            apenas_pendentes=apenas_pendentes
+        )
+        
+        return {
+            "message": "Classificação em lote iniciada",
+            "sessao_id": sessao_id,
+            "status": "processing",
+            "parametros": {
+                "limite_produtos": limite_produtos,
+                "apenas_pendentes": apenas_pendentes
+            },
+            "estimated_time_minutes": 10
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao iniciar classificação em lote: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@app.get("/api/v1/processo/status/{sessao_id}")
+async def get_processo_status(sessao_id: str):
+    """
+    Obter status de uma sessão de processamento
+    """
+    try:
+        service = get_unified_service()
+        
+        with service.get_session() as session:
+            # Buscar status na tabela de logs ou sessões
+            status = session.execute(
+                """
+                SELECT status, progresso, mensagem, data_atualizacao
+                FROM sessoes_processamento 
+                WHERE sessao_id = ?
+                ORDER BY data_atualizacao DESC
+                LIMIT 1
+                """,
+                (sessao_id,)
+            ).fetchone()
+            
+            if not status:
+                return {
+                    "sessao_id": sessao_id,
+                    "status": "not_found",
+                    "message": "Sessão não encontrada"
+                }
+            
+            return {
+                "sessao_id": sessao_id,
+                "status": status[0],
+                "progresso": status[1],
+                "mensagem": status[2],
+                "data_atualizacao": status[3]
+            }
+            
+    except Exception as e:
+        logger.error(f"Erro ao buscar status da sessão {sessao_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+# ==================
+# FUNÇÕES DE BACKGROUND TASKS
+# ==================
+
+async def processar_classificacao_individual(produto_id: int, sessao_id: str, force_reclassify: bool = False):
+    """
+    Processar classificação individual em background
+    """
+    try:
+        # Aqui você integraria com o sistema de agentes existente
+        # Por enquanto, vamos simular o processamento
+        
+        logger.info(f"Iniciando classificação do produto {produto_id} na sessão {sessao_id}")
+        
+        service = get_unified_service()
+        
+        # Simular tempo de processamento
+        await asyncio.sleep(2)
+        
+        with service.get_session() as session:
+            # Atualizar status do produto (simulação)
+            session.execute(
+                """
+                UPDATE produtos SET
+                    ncm_sugerido = '12345678',
+                    cest_sugerido = '01.001.00',
+                    confianca_sugerida = 0.95,
+                    status_revisao = 'AGUARDANDO_REVISAO',
+                    data_atualizacao = ?
+                WHERE produto_id = ?
+                """,
+                (datetime.now().isoformat(), produto_id)
+            )
+            
+            session.commit()
+        
+        logger.info(f"Classificação do produto {produto_id} concluída")
+        
+    except Exception as e:
+        logger.error(f"Erro na classificação do produto {produto_id}: {str(e)}")
+
+async def executar_sincronizacao_produtos(sessao_id: str):
+    """
+    Executar sincronização de produtos em background
+    """
+    try:
+        logger.info(f"Iniciando sincronização de produtos na sessão {sessao_id}")
+        
+        # Aqui você integraria com o PostgreSQL da empresa
+        # Por enquanto, vamos simular
+        
+        await asyncio.sleep(5)  # Simular tempo de processamento
+        
+        logger.info(f"Sincronização de produtos da sessão {sessao_id} concluída")
+        
+    except Exception as e:
+        logger.error(f"Erro na sincronização da sessão {sessao_id}: {str(e)}")
+
+async def executar_classificacao_lote(sessao_id: str, limite_produtos: Optional[int], apenas_pendentes: bool):
+    """
+    Executar classificação em lote em background
+    """
+    try:
+        logger.info(f"Iniciando classificação em lote na sessão {sessao_id}")
+        
+        # Aqui você integraria com o sistema de agentes para classificação em lote
+        # Por enquanto, vamos simular
+        
+        await asyncio.sleep(10)  # Simular tempo de processamento
+        
+        logger.info(f"Classificação em lote da sessão {sessao_id} concluída")
+        
+    except Exception as e:
+        logger.error(f"Erro na classificação em lote da sessão {sessao_id}: {str(e)}")
+
 # ==================
 
 # Servir arquivos estáticos (se houver frontend)

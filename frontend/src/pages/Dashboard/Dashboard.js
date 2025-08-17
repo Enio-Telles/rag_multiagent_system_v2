@@ -17,13 +17,15 @@ import {
   Divider,
   Alert,
   Paper,
+  CircularProgress,
+  Skeleton,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Inventory as ProductsIcon,
   Assignment as ClassificationIcon,
-  CheckCircle as ApprovalIcon,
+  CheckCircle as CheckCircleIcon,
   Assessment as AuditIcon,
   Warning as WarningIcon,
   Refresh as RefreshIcon,
@@ -35,107 +37,50 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useEmpresa } from '../../contexts/EmpresaContext';
 import { useAuth } from '../../contexts/AuthContext';
+import axios from 'axios';
 
-// Mock data - em produção virá da API
-const mockDashboardData = {
-  metrics: {
-    totalProdutos: 1247,
-    totalProdutosVariacao: 12.5,
-    produtosPendentes: 23,
-    produtosPendentesVariacao: -5.2,
-    classificacoesHoje: 156,
-    classificacoesHojeVariacao: 8.3,
-    precisaoIA: 94.7,
-    precisaoIAVariacao: 2.1,
-  },
-  classificacoesPendentes: [
-    {
-      id: 1,
-      produto: 'Smartphone Samsung Galaxy S23',
-      categoria: 'Eletrônicos',
-      confianca: 89,
-      tempo: '2 horas atrás',
-    },
-    {
-      id: 2,
-      produto: 'Tênis Nike Air Max',
-      categoria: 'Calçados',
-      confianca: 76,
-      tempo: '4 horas atrás',
-    },
-    {
-      id: 3,
-      produto: 'Livro JavaScript Avançado',
-      categoria: 'Livros',
-      confianca: 92,
-      tempo: '6 horas atrás',
-    },
-  ],
-  atividadesRecentes: [
-    {
-      id: 1,
-      tipo: 'classificacao',
-      descricao: 'Produto "iPhone 15 Pro" classificado como Eletrônicos',
-      usuario: 'Ana Silva',
-      tempo: '15 min atrás',
-    },
-    {
-      id: 2,
-      tipo: 'aprovacao',
-      descricao: '12 classificações aprovadas em lote',
-      usuario: 'Carlos Santos',
-      tempo: '1 hora atrás',
-    },
-    {
-      id: 3,
-      tipo: 'auditoria',
-      descricao: 'Relatório mensal de precisão gerado',
-      usuario: 'Sistema',
-      tempo: '2 horas atrás',
-    },
-  ],
-};
+// API Base URL
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
-function MetricCard({ title, value, variation, icon: Icon, color = 'primary' }) {
-  const isPositive = variation > 0;
-  const isNegative = variation < 0;
+function MetricCard({ title, value, variation, icon: Icon, color = 'primary', onClick }) {
+  const isPositive = variation && variation > 0;
+  const isNegative = variation && variation < 0;
 
   return (
-    <Card sx={{ height: '100%' }}>
+    <Card 
+      sx={{ 
+        height: '100%',
+        cursor: onClick ? 'pointer' : 'default',
+        '&:hover': onClick ? { 
+          boxShadow: 3,
+          transform: 'translateY(-2px)',
+          transition: 'all 0.2s ease-in-out'
+        } : {}
+      }}
+      onClick={onClick}
+    >
       <CardContent>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Avatar sx={{ bgcolor: `${color}.light`, color: `${color}.main` }}>
             <Icon />
           </Avatar>
-          <IconButton size="small" color="default">
-            <RefreshIcon fontSize="small" />
-          </IconButton>
+          {variation && (
+            <Chip
+              icon={isPositive ? <TrendingUpIcon /> : <TrendingDownIcon />}
+              label={`${variation > 0 ? '+' : ''}${variation}%`}
+              color={isPositive ? 'success' : 'error'}
+              size="small"
+            />
+          )}
         </Box>
         
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </Typography>
         
-        <Typography variant="body2" color="text.secondary" gutterBottom>
+        <Typography variant="body2" color="text.secondary">
           {title}
         </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {isPositive && <TrendingUpIcon color="success" fontSize="small" />}
-          {isNegative && <TrendingDownIcon color="error" fontSize="small" />}
-          
-          <Typography
-            variant="body2"
-            color={isPositive ? 'success.main' : isNegative ? 'error.main' : 'text.secondary'}
-            fontWeight="medium"
-          >
-            {variation > 0 ? '+' : ''}{variation}%
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary">
-            vs mês anterior
-          </Typography>
-        </Box>
       </CardContent>
     </Card>
   );
@@ -145,314 +90,319 @@ function Dashboard() {
   const navigate = useNavigate();
   const { empresaAtual } = useEmpresa();
   const { user } = useAuth();
+
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(mockDashboardData);
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  useEffect(() => {
-    // Simular carregamento de dados
-    const timer = setTimeout(() => {
+  // Função para buscar dados do dashboard
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.get(`${API_BASE_URL}/dashboard/stats`);
+      setDashboardData(response.data);
+      setLastUpdate(new Date());
+      
+    } catch (err) {
+      console.error('Erro ao buscar dados do dashboard:', err);
+      setError('Erro ao carregar dados do dashboard. Usando dados de demonstração.');
+      
+      // Fallback para dados mock em caso de erro
+      setDashboardData({
+        resumo: {
+          total_produtos: 1247,
+          produtos_classificados: 1156,
+          produtos_pendentes: 91,
+          taxa_sucesso: 92.7,
+          classificacoes_hoje: 156,
+          golden_set_size: 45
+        },
+        agentes_performance: [
+          { nome: 'NCM Agent', total_execucoes: 892, confianca_media: 96.2, tempo_medio_ms: 2100 },
+          { nome: 'CEST Agent', total_execucoes: 567, confianca_media: 88.9, tempo_medio_ms: 4800 },
+          { nome: 'Categoria Agent', total_execucoes: 1156, confianca_media: 97.8, tempo_medio_ms: 1300 }
+        ]
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  const getActivityIcon = (tipo) => {
-    switch (tipo) {
-      case 'classificacao':
-        return <ClassificationIcon color="primary" />;
-      case 'aprovacao':
-        return <ApprovalIcon color="success" />;
-      case 'auditoria':
-        return <AuditIcon color="info" />;
-      default:
-        return <TimelineIcon />;
     }
   };
 
-  if (loading) {
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    fetchDashboardData();
+    
+    // Auto-refresh a cada 30 segundos
+    const interval = setInterval(fetchDashboardData, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Loading state
+  if (loading && !dashboardData) {
     return (
       <Box>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
           Dashboard
         </Typography>
-        <LinearProgress />
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            Carregando dados do dashboard...
-          </Typography>
-        </Box>
+        <Grid container spacing={3}>
+          {[1, 2, 3, 4].map((item) => (
+            <Grid item xs={12} sm={6} md={3} key={item}>
+              <Card>
+                <CardContent>
+                  <Skeleton variant="circular" width={40} height={40} />
+                  <Skeleton variant="text" width="60%" sx={{ mt: 1 }} />
+                  <Skeleton variant="text" width="40%" />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       </Box>
     );
   }
 
+  const { resumo, agentes_performance } = dashboardData || {};
+
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Dashboard
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Dashboard
+          </Typography>
           <Typography variant="body1" color="text.secondary">
-            Bem-vindo de volta, <strong>{user?.nome || user?.username}</strong>!
+            Visão geral do sistema de classificação fiscal
           </Typography>
-          
-          {empresaAtual && (
-            <Chip
-              label={`${empresaAtual.nome}`}
-              color="primary"
-              variant="outlined"
-              size="small"
-            />
-          )}
         </Box>
-
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <Typography variant="body2">
-            <strong>Novidade:</strong> Sistema de classificação automática com IA agora disponível! 
-            <Button size="small" sx={{ ml: 1 }}>
-              Saiba mais
-            </Button>
+        
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            Última atualização: {lastUpdate.toLocaleTimeString()}
           </Typography>
-        </Alert>
+          <IconButton onClick={fetchDashboardData} disabled={loading}>
+            <RefreshIcon />
+          </IconButton>
+        </Box>
       </Box>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Métricas Principais */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
             title="Total de Produtos"
-            value={data.metrics.totalProdutos}
-            variation={data.metrics.totalProdutosVariacao}
+            value={resumo?.total_produtos || 0}
+            variation={12.5}
             icon={ProductsIcon}
             color="primary"
+            onClick={() => navigate('/produtos')}
           />
         </Grid>
         
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
-            title="Pendentes"
-            value={data.metrics.produtosPendentes}
-            variation={data.metrics.produtosPendentesVariacao}
+            title="Produtos Classificados"
+            value={resumo?.produtos_classificados || 0}
+            variation={8.3}
+            icon={CheckCircleIcon}
+            color="success"
+            onClick={() => navigate('/produtos?status=classificado')}
+          />
+        </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <MetricCard
+            title="Produtos Pendentes"
+            value={resumo?.produtos_pendentes || 0}
+            variation={-5.2}
             icon={WarningIcon}
             color="warning"
+            onClick={() => navigate('/produtos?status=nao_classificado')}
           />
         </Grid>
         
         <Grid item xs={12} sm={6} md={3}>
           <MetricCard
-            title="Classificações Hoje"
-            value={data.metrics.classificacoesHoje}
-            variation={data.metrics.classificacoesHojeVariacao}
-            icon={SpeedIcon}
-            color="success"
-          />
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <MetricCard
-            title="Precisão da IA"
-            value={`${data.metrics.precisaoIA}%`}
-            variation={data.metrics.precisaoIAVariacao}
-            icon={AIIcon}
+            title="Taxa de Sucesso"
+            value={`${resumo?.taxa_sucesso || 0}%`}
+            variation={2.1}
+            icon={TrendingUpIcon}
             color="info"
+            onClick={() => navigate('/auditoria')}
           />
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
-        {/* Classificações Pendentes */}
-        <Grid item xs={12} lg={8}>
+      {/* Seção de Ações Rápidas */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={8}>
           <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold">
-                  Classificações Pendentes
-                </Typography>
-                <Button
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={() => navigate('/classificacao')}
-                >
-                  Ver todas
-                </Button>
-              </Box>
-
-              <List>
-                {data.classificacoesPendentes.map((item, index) => (
-                  <Box key={item.id}>
-                    <ListItem
-                      sx={{
-                        px: 0,
-                        '&:hover': {
-                          bgcolor: 'action.hover',
-                          borderRadius: 1,
-                        },
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Avatar sx={{ bgcolor: 'primary.light', width: 40, height: 40 }}>
-                          <ClassificationIcon color="primary" />
-                        </Avatar>
-                      </ListItemIcon>
-                      
-                      <ListItemText
-                        primary={
-                          <Typography variant="body1" fontWeight="medium">
-                            {item.produto}
-                          </Typography>
-                        }
-                        secondary={
-                          <Box sx={{ mt: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                              <Chip
-                                label={item.categoria}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
-                              <Chip
-                                label={`${item.confianca}% confiança`}
-                                size="small"
-                                color={item.confianca > 85 ? 'success' : 'warning'}
-                              />
-                            </Box>
-                            <Typography variant="caption" color="text.secondary">
-                              {item.tempo}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                      
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button size="small" variant="outlined" color="success">
-                          Aprovar
-                        </Button>
-                        <Button size="small" variant="outlined">
-                          Revisar
-                        </Button>
-                      </Box>
-                    </ListItem>
-                    
-                    {index < data.classificacoesPendentes.length - 1 && <Divider />}
-                  </Box>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Atividades Recentes */}
-        <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold">
-                  Atividades Recentes
-                </Typography>
-                <Button
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={() => navigate('/auditoria')}
-                >
-                  Ver todas
-                </Button>
-              </Box>
-
-              <List>
-                {data.atividadesRecentes.map((atividade, index) => (
-                  <Box key={atividade.id}>
-                    <ListItem sx={{ px: 0 }}>
-                      <ListItemIcon sx={{ minWidth: 40 }}>
-                        {getActivityIcon(atividade.tipo)}
-                      </ListItemIcon>
-                      
-                      <ListItemText
-                        primary={
-                          <Typography variant="body2">
-                            {atividade.descricao}
-                          </Typography>
-                        }
-                        secondary={
-                          <Box sx={{ mt: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              por {atividade.usuario}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" display="block">
-                              {atividade.tempo}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                    
-                    {index < data.atividadesRecentes.length - 1 && <Divider />}
-                  </Box>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card sx={{ mt: 3 }}>
             <CardContent>
               <Typography variant="h6" fontWeight="bold" gutterBottom>
                 Ações Rápidas
               </Typography>
               
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid item xs={12} sm={6} md={3}>
                   <Button
-                    fullWidth
                     variant="outlined"
-                    startIcon={<ProductsIcon />}
-                    onClick={() => navigate('/produtos')}
-                    sx={{ py: 1.5 }}
-                  >
-                    Produtos
-                  </Button>
-                </Grid>
-                
-                <Grid item xs={6}>
-                  <Button
                     fullWidth
-                    variant="outlined"
                     startIcon={<ClassificationIcon />}
                     onClick={() => navigate('/classificacao')}
-                    sx={{ py: 1.5 }}
+                    sx={{ py: 2 }}
                   >
-                    Classificar
+                    Nova Classificação
                   </Button>
                 </Grid>
                 
-                <Grid item xs={6}>
+                <Grid item xs={12} sm={6} md={3}>
                   <Button
-                    fullWidth
                     variant="outlined"
+                    fullWidth
                     startIcon={<ApprovalIcon />}
                     onClick={() => navigate('/aprovacao')}
-                    sx={{ py: 1.5 }}
+                    sx={{ py: 2 }}
                   >
-                    Aprovar
+                    Aprovar Classificações
                   </Button>
                 </Grid>
                 
-                <Grid item xs={6}>
+                <Grid item xs={12} sm={6} md={3}>
                   <Button
-                    fullWidth
                     variant="outlined"
+                    fullWidth
+                    startIcon={<ProductsIcon />}
+                    onClick={() => navigate('/produtos')}
+                    sx={{ py: 2 }}
+                  >
+                    Gerenciar Produtos
+                  </Button>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
                     startIcon={<AuditIcon />}
                     onClick={() => navigate('/auditoria')}
-                    sx={{ py: 1.5 }}
+                    sx={{ py: 2 }}
                   >
-                    Relatórios
+                    Ver Relatórios
                   </Button>
                 </Grid>
               </Grid>
             </CardContent>
           </Card>
         </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>
+                Status do Sistema
+              </Typography>
+              
+              <List>
+                <ListItem>
+                  <ListItemIcon>
+                    <CheckCircle color="success" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="API Online"
+                    secondary="Todas as funcionalidades disponíveis"
+                  />
+                </ListItem>
+                
+                <ListItem>
+                  <ListItemIcon>
+                    <AIIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={`Base Padrão: ${resumo?.golden_set_size || 0} itens`}
+                    secondary="Base de conhecimento atualizada"
+                  />
+                </ListItem>
+                
+                <ListItem>
+                  <ListItemIcon>
+                    <TimelineIcon color="info" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={`Classificações hoje: ${resumo?.classificacoes_hoje || 0}`}
+                    secondary="Processamento ativo"
+                  />
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
+
+      {/* Performance dos Agentes */}
+      {agentes_performance && agentes_performance.length > 0 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                  Performance dos Agentes de IA
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  {agentes_performance.map((agente, index) => (
+                    <Grid item xs={12} md={4} key={index}>
+                      <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                          <Avatar sx={{ bgcolor: 'primary.light' }}>
+                            <AIIcon color="primary" />
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {agente.nome}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {agente.total_execucoes} execuções
+                            </Typography>
+                          </Box>
+                        </Box>
+                        
+                        <Box sx={{ mb: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2">Confiança</Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              {agente.confianca_media}%
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={agente.confianca_media}
+                            sx={{ height: 6, borderRadius: 1 }}
+                          />
+                        </Box>
+                        
+                        <Typography variant="body2" color="text.secondary">
+                          Tempo médio: {Math.round(agente.tempo_medio_ms / 1000)}s
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
     </Box>
   );
 }

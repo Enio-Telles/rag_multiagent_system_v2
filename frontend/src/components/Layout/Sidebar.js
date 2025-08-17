@@ -49,6 +49,13 @@ const menuItems = [
     badge: 12, // Produtos pendentes
   },
   {
+    id: 'processo',
+    label: 'Execução do Processo',
+    icon: ClassificationIcon,
+    path: '/processo',
+    section: 'main',
+  },
+  {
     id: 'classificacao',
     label: 'Classificação',
     icon: ClassificationIcon,
@@ -70,6 +77,13 @@ const menuItems = [
     icon: AuditIcon,
     path: '/auditoria',
     section: 'main',
+  },
+  {
+    id: 'base-padrao',
+    label: 'Base de Produtos Padrão',
+    icon: ReportsIcon,
+    path: '/base-padrao',
+    section: 'knowledge',
   },
   {
     id: 'relatorios',
@@ -105,6 +119,7 @@ const menuItems = [
 
 const sections = {
   main: 'Principal',
+  knowledge: 'Base de Conhecimento',
   reports: 'Relatórios',
   admin: 'Administração',
 };
