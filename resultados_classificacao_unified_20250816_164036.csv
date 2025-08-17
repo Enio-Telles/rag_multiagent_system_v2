@@ -1,2 +1,0 @@
-produto_id,descricao_produto,codigo_produto,classificacao_id,ncm_classificado,cest_classificado,confianca_consolidada,justificativa,tempo_processamento_ms,sistema
-10001,Smartphone Samsung Galaxy S24 Ultra 512GB Preto,SAM-S24U-512-BK,279,8517,21.110.00,0.95,Classificação automática baseada em análise de texto: Smartphone Samsung Galaxy S24 Ultra 512GB Preto...,39,unified_sqlite

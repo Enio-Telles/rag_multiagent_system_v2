@@ -5,6 +5,8 @@ env/
 .env/
 documentacao/
 *.md
+cleanup_backup
+*.json
 # Compiled source #
 ###################
 *.com

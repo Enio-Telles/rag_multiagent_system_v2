@@ -1,4 +1,0 @@
-produto_id,descricao_produto,codigo_produto,classificacao_id,ncm_classificado,cest_classificado,confianca_consolidada,justificativa,tempo_processamento_ms,sistema
-10001,Smartphone Samsung Galaxy S24 Ultra 512GB Preto,SAM-S24U-512-BK,276,8517,21.110.00,0.95,Classificação automática baseada em análise de texto: Smartphone Samsung Galaxy S24 Ultra 512GB Preto...,37,unified_sqlite
-10002,Refrigerante Coca-Cola Zero Açúcar 350ml Lata,COCA-ZERO-350,277,22021000,03.007.00,0.95,Classificação automática baseada em análise de texto: Refrigerante Coca-Cola Zero Açúcar 350ml Lata...,2,unified_sqlite
-10003,Parafuso Phillips M8x25mm Aço Inoxidável,PAR-PH-M8-25-INOX,278,73181500,01.999.00,0.95,Classificação automática baseada em análise de texto: Parafuso Phillips M8x25mm Aço Inoxidável...,2,unified_sqlite
