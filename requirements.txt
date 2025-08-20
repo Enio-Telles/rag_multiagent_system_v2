@@ -6,13 +6,12 @@ sqlalchemy==2.0.23
 alembic==1.12.1
 
 # Database
-sqlite3
-psycopg2-binary==2.9.7
+psycopg2-binary
 
 # Machine Learning
 sentence-transformers==2.2.2
 faiss-cpu==1.7.4
-numpy==1.24.3
+numpy
 pandas==2.0.3
 
 # HTTP Client
